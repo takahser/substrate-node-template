@@ -3538,6 +3538,7 @@ dependencies = [
  "pallet-grandpa",
  "pallet-randomness-collective-flip",
  "pallet-sudo",
+ "pallet-task",
  "pallet-template",
  "pallet-timestamp",
  "pallet-transaction-payment",
@@ -3832,6 +3833,22 @@ dependencies = [
  "scale-info",
  "sp-io",
  "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "pallet-task"
+version = "0.0.24"
+source = "git+https://github.com/UniversalDot/pallets.git#b3dd97dcb8a37a7624e51f97aaa5bc1b48005212"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "log",
+ "pallet-balances",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
  "sp-std",
 ]
 
