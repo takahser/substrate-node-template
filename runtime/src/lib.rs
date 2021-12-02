@@ -284,11 +284,17 @@ parameter_types! {
 	pub const MaxTasksOwned: u32 = 77;
   }
 
-// Configure the pallet-template in pallets/template.
+// Configure the pallet-task.
 impl pallet_task::Config for Runtime {
 	type Event = Event;
 	type Currency = Balances;
 	type MaxTasksOwned = MaxTasksOwned;
+}
+
+// Configure the pallet-profile.
+impl pallet_profile::Config for Runtime {
+	type Event = Event;
+	type Currency = Balances;
 }
 
 // Create the runtime by composing the FRAME pallets that were previously configured.
@@ -309,6 +315,7 @@ construct_runtime!(
 		// Include the custom logic from the pallet-template in the runtime.
 		TemplateModule: pallet_template,
 		Task: pallet_task::{Pallet, Call, Storage, Event<T>},
+		Profile: pallet_profile::{Pallet, Call, Storage, Event<T>},
 	}
 );
 
