@@ -297,6 +297,11 @@ impl pallet_profile::Config for Runtime {
 	type Currency = Balances;
 }
 
+// // Configure the pallet-dao.
+// impl pallet_dao::Config for Runtime {
+// 	type Event = Event;
+// }
+
 // Create the runtime by composing the FRAME pallets that were previously configured.
 construct_runtime!(
 	pub enum Runtime where
@@ -316,6 +321,7 @@ construct_runtime!(
 		TemplateModule: pallet_template,
 		Task: pallet_task::{Pallet, Call, Storage, Event<T>},
 		Profile: pallet_profile::{Pallet, Call, Storage, Event<T>},
+		// Dao: pallet_dao::{Pallet, Call, Storage, Event<T>},
 	}
 );
 

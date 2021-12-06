@@ -197,7 +197,12 @@ version = '0.0.49'
 [dependencies.pallet-task]
 default-features = false
 git = 'https://github.com/UniversalDot/pallets.git'
-version = '0.0.26'
+version = '0.0.30'
+
+[dependencies.pallet-dao]
+default-features = false
+git = 'https://github.com/UniversalDot/pallets.git'
+version = '0.0.3'
 
 [features]
 default = ['std']
@@ -222,6 +227,7 @@ std = [
     'pallet-aura/std',
     'pallet-task/std',
     'pallet-profile/std',
+    'pallet-dao/std',
     'pallet-balances/std',
     'pallet-grandpa/std',
     'pallet-randomness-collective-flip/std',
