@@ -292,9 +292,9 @@ impl pallet_task::Config for Runtime {
 }
 
 // Configure the pallet-dao.
-// impl pallet_dao::Config for Runtime {
-// 	type Event = Event;
-// }
+impl pallet_dao::Config for Runtime {
+	type Event = Event;
+}
 
 // Configure the pallet-profile.
 impl pallet_profile::Config for Runtime {
@@ -323,7 +323,7 @@ construct_runtime!(
 		TemplateModule: pallet_template,
 		Task: pallet_task::{Pallet, Call, Storage, Event<T>},
 		Profile: pallet_profile::{Pallet, Call, Storage, Event<T>},
-		// Dao: pallet_dao::{Pallet, Call, Storage, Event<T>},
+		Dao: pallet_dao::{Pallet, Call, Storage, Event<T>},
 	}
 );
 
