@@ -282,7 +282,7 @@ impl pallet_template::Config for Runtime {
 parameter_types! {
 	// Max tasks per user.
 	pub const MaxTasksOwned: u32 = 77;
-  }
+}
 
 // Configure the pallet-task.
 impl pallet_task::Config for Runtime {
@@ -291,16 +291,18 @@ impl pallet_task::Config for Runtime {
 	type MaxTasksOwned = MaxTasksOwned;
 }
 
+// Configure the pallet-dao.
+// impl pallet_dao::Config for Runtime {
+// 	type Event = Event;
+// }
+
 // Configure the pallet-profile.
 impl pallet_profile::Config for Runtime {
 	type Event = Event;
 	type Currency = Balances;
 }
 
-// // Configure the pallet-dao.
-// impl pallet_dao::Config for Runtime {
-// 	type Event = Event;
-// }
+
 
 // Create the runtime by composing the FRAME pallets that were previously configured.
 construct_runtime!(
