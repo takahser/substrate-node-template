@@ -3748,7 +3748,7 @@ dependencies = [
 [[package]]
 name = "pallet-dao"
 version = "0.0.17"
-source = "git+https://github.com/UniversalDot/pallets.git#27a718a15517f5192ce1f486aee28e486cbb354f"
+source = "git+https://github.com/UniversalDot/pallets.git#bb6c20acd1bdd8f0fe946c44eab7bf05aee39f8d"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -3784,8 +3784,8 @@ dependencies = [
 
 [[package]]
 name = "pallet-profile"
-version = "0.0.49"
-source = "git+https://github.com/UniversalDot/pallets.git#27a718a15517f5192ce1f486aee28e486cbb354f"
+version = "0.0.51"
+source = "git+https://github.com/UniversalDot/pallets.git#bb6c20acd1bdd8f0fe946c44eab7bf05aee39f8d"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -3848,8 +3848,8 @@ dependencies = [
 
 [[package]]
 name = "pallet-task"
-version = "0.0.30"
-source = "git+https://github.com/UniversalDot/pallets.git#27a718a15517f5192ce1f486aee28e486cbb354f"
+version = "0.0.31"
+source = "git+https://github.com/UniversalDot/pallets.git#bb6c20acd1bdd8f0fe946c44eab7bf05aee39f8d"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
