@@ -192,12 +192,12 @@ version = '4.0.0-dev'
 [dependencies.pallet-profile]
 default-features = false
 git = 'https://github.com/UniversalDot/pallets.git'
-version = '0.0.49'
+version = '0.0.51'
 
 [dependencies.pallet-task]
 default-features = false
 git = 'https://github.com/UniversalDot/pallets.git'
-version = '0.0.30'
+version = '0.0.31'
 
 [dependencies.pallet-dao]
 default-features = false
