@@ -197,7 +197,7 @@ version = '0.0.51'
 [dependencies.pallet-task]
 default-features = false
 git = 'https://github.com/UniversalDot/pallets.git'
-version = '0.0.31'
+version = '0.0.32'
 
 [dependencies.pallet-dao]
 default-features = false
