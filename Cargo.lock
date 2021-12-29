@@ -3748,7 +3748,7 @@ dependencies = [
 [[package]]
 name = "pallet-dao"
 version = "0.0.18"
-source = "git+https://github.com/UniversalDot/pallets.git#3a44de588fe2fd78c4121a01bcd0b0aeb9dcca48"
+source = "git+https://github.com/UniversalDot/pallets.git#43f5528d1bee180c1341cea5e54cd3552b8bcaa1"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -3784,8 +3784,8 @@ dependencies = [
 
 [[package]]
 name = "pallet-profile"
-version = "0.0.54"
-source = "git+https://github.com/UniversalDot/pallets.git#3a44de588fe2fd78c4121a01bcd0b0aeb9dcca48"
+version = "0.0.62"
+source = "git+https://github.com/UniversalDot/pallets.git#43f5528d1bee180c1341cea5e54cd3552b8bcaa1"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -3848,8 +3848,8 @@ dependencies = [
 
 [[package]]
 name = "pallet-task"
-version = "0.0.33"
-source = "git+https://github.com/UniversalDot/pallets.git#3a44de588fe2fd78c4121a01bcd0b0aeb9dcca48"
+version = "0.0.35"
+source = "git+https://github.com/UniversalDot/pallets.git#43f5528d1bee180c1341cea5e54cd3552b8bcaa1"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -7194,7 +7194,7 @@ version = "1.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1f559b464de2e2bdabcac6a210d12e9b5a5973c251e102c44c585c71d51bd78e"
 dependencies = [
- "cfg-if 1.0.0",
+ "cfg-if 0.1.10",
  "rand 0.8.4",
  "static_assertions",
 ]
