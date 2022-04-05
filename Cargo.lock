@@ -3744,7 +3744,6 @@ dependencies = [
 [[package]]
 name = "pallet-dao"
 version = "0.0.25"
-source = "git+https://github.com/UniversalDot/pallets.git#970a2a11cd5372e12257586e581029e04b415e8b"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -3755,6 +3754,9 @@ dependencies = [
  "pallet-task",
  "parity-scale-codec",
  "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
  "sp-std",
 ]
 
@@ -3784,7 +3786,6 @@ dependencies = [
 [[package]]
 name = "pallet-profile"
 version = "0.0.69"
-source = "git+https://github.com/UniversalDot/pallets.git#970a2a11cd5372e12257586e581029e04b415e8b"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -3793,6 +3794,9 @@ dependencies = [
  "pallet-balances",
  "parity-scale-codec",
  "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
  "sp-std",
 ]
 
@@ -3848,7 +3852,6 @@ dependencies = [
 [[package]]
 name = "pallet-task"
 version = "0.0.42"
-source = "git+https://github.com/UniversalDot/pallets.git#970a2a11cd5372e12257586e581029e04b415e8b"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -3859,6 +3862,9 @@ dependencies = [
  "parity-scale-codec",
  "scale-info",
  "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
  "sp-std",
 ]
 
