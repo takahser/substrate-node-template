@@ -2,6 +2,9 @@
 members = [
     'node',
     'pallets/template',
+    'pallets/profile',
+    'pallets/task',
+    'pallets/dao',
     'runtime',
 ]
 [profile.release]
