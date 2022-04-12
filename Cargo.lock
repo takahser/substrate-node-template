@@ -3859,6 +3859,7 @@ dependencies = [
  "log",
  "pallet-balances",
  "pallet-profile",
+ "pallet-timestamp",
  "parity-scale-codec",
  "scale-info",
  "serde",

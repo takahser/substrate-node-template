@@ -24,6 +24,7 @@ frame_support::construct_runtime!(
 		Task: pallet_task::{Pallet, Call, Storage, Event<T>},
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
 		Profile: pallet_profile::{Pallet, Call, Storage, Event<T>},
+		Time: pallet_timestamp::{Pallet, Call, Storage, Inherent},
 	}
 );
 
@@ -56,7 +57,15 @@ impl system::Config for Test {
 	type SystemWeightInfo = ();
 	type SS58Prefix = SS58Prefix;
 	type OnSetCode = ();
-	
+
+}
+
+pub type Moment = u64;
+impl pallet_timestamp::Config for Test {
+	type Moment =  Moment;
+	type OnTimestampSet = ();
+	type MinimumPeriod = ();
+	type WeightInfo = ();
 }
 
 parameter_types! {
@@ -89,6 +98,7 @@ impl pallet_task::Config for Test {
 	type Event = Event;
 	type Currency = Balances;
 	type MaxTasksOwned = MaxTasksOwned;
+	type Time = Time;
 }
 
 pub(crate) fn new_test_ext() -> sp_io::TestExternalities {

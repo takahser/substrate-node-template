@@ -24,35 +24,35 @@
 //! ## Overview
 //!
 //! The Task Pallet creates a way for users to interact with one another.
-//! 
+//!
 //! There are two types of Users who can interact with tasks. We call them
-//! Initiators and Volunteers. 
-//! 
+//! Initiators and Volunteers.
+//!
 //! Initiators are people who have the permission to Create and Remove Tasks.
 //! Volunteers are people who have the permission to Start and Complete Tasks.
-//! 
-//! Anybody can become an Initiator or Volunteer. In other words, 
-//! one doesn't need permission to become an Initiator or Volunteer. 
-//! 
+//!
+//! Anybody can become an Initiator or Volunteer. In other words,
+//! one doesn't need permission to become an Initiator or Volunteer.
+//!
 //! When Tasks are created, there is some associated metadata that shall be defined.
 //! This includes the following:
 //! - Task Specification (Defining the Task specification)
 //! - Task Budget (The cost of completion for the Task)
 //! - Task Deadline (The specified time until which the task should be completed)
-//! 
-//! Furthermore, budget funds are locked in escrow when task is created. 
-//! Funds are removed from escrow when task is removed. 
+//!
+//! Furthermore, budget funds are locked in escrow when task is created.
+//! Funds are removed from escrow when task is removed.
 //!
 //! ## Interface
 //!
 //! ### Public Functions
 //!
-//! - `create_task` - Function used to create a new task. 
-//! 
+//! - `create_task` - Function used to create a new task.
+//!
 //! - `start_task` - Function used to start already existing task.
-//! 
+//!
 //! - `complete_task` - Function used to complete a task.
-//! 
+//!
 //! - `remove_task` - Function used to remove task.
 //!
 //! ## Related Modules
@@ -76,14 +76,15 @@ mod benchmarking;
 #[frame_support::pallet]
 pub mod pallet {
 	use crate::TaskStatus::Created; //TODO: Better import
-	use frame_support::{dispatch::DispatchResult, pallet_prelude::*};
+	use frame_support::{dispatch::DispatchResult, pallet_prelude::*, traits::UnixTime};
 	use frame_system::pallet_prelude::*;
 	use frame_support::{
-		sp_runtime::traits:: Hash,
-		traits::{Currency, tokens::ExistenceRequirement}, 
+		sp_runtime::traits::{Hash, SaturatedConversion},
+		traits::{Currency, tokens::ExistenceRequirement},
 		transactional};
 	use scale_info::TypeInfo;
 	use sp_std::vec::Vec;
+	use core::time::Duration;
 
 	#[cfg(feature = "std")]
 	use frame_support::serde::{Deserialize, Serialize};
@@ -103,7 +104,7 @@ pub mod pallet {
 		pub current_owner: AccountOf<T>,
 		pub status: TaskStatus,
 		pub budget: BalanceOf<T>,
-		pub deadline: u32,
+		pub deadline: u64,
 	}
 
 	// Set TaskStatus enum.
@@ -124,6 +125,9 @@ pub mod pallet {
 
 		/// Currency type that is linked with AccountID
 		type Currency: Currency<Self::AccountId>;
+
+		/// Time provider type
+		type Time: UnixTime;
 
 		/// The maximum amount of tasks a single account can own.
 		#[pallet::constant]
@@ -182,8 +186,10 @@ pub mod pallet {
 		ExceedMaxTasksOwned,
 		/// You are not allowed to complete this task
 		NoPermissionToComplete,
-		/// This account has no Profile yet. 
+		/// This account has no Profile yet.
 		NoProfile,
+		/// Provided deadline value can not be accepted.
+		IncorrectDeadlineTimestamp,
         ProfileAddReputationFailed, // TODO: remove this when pallet_profile returns DispatchError
 	}
 
@@ -194,14 +200,14 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 		/// Function call that creates tasks.  [ origin, specification, budget, deadline]
 		#[pallet::weight(10_000 + T::DbWeight::get().writes(1))]
-		pub fn create_task(origin: OriginFor<T>, title: Vec<u8>, specification: Vec<u8>, budget: BalanceOf<T>, deadline: u32) -> DispatchResultWithPostInfo {
-			
+		pub fn create_task(origin: OriginFor<T>, title: Vec<u8>, specification: Vec<u8>, budget: BalanceOf<T>, deadline: u64) -> DispatchResultWithPostInfo {
+
 			// Check that the extrinsic was signed and get the signer.
 			let signer = ensure_signed(origin)?;
 
 			// Update storage.
-			let task_id = Self::new_task(&signer, &title, &specification, &budget, &deadline)?;
-			
+			let task_id = Self::new_task(&signer, &title, &specification, &budget, deadline)?;
+
 			// TODO: Check if user has balance to create task
 			// T::Currency::reserve(&signer, budget).map_err(|_| "locker can't afford to lock the amount requested")?;
 
@@ -214,7 +220,7 @@ pub mod pallet {
 		/// Function call that starts a task by assigning new task owner. [origin, task_id]
 		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1,1))]
 		pub fn start_task(origin: OriginFor<T>, task_id: T::Hash) -> DispatchResult {
-			
+
 			// Check that the extrinsic was signed and get the signer.
 			let signer = ensure_signed(origin)?;
 
@@ -223,14 +229,14 @@ pub mod pallet {
 
 			// Emit a Task Assigned Event.
 			Self::deposit_event(Event::TaskAssigned(signer, task_id));
-			
+
 			Ok(())
 		}
 
 		/// Function that completes a task [origin, task_id]
 		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(2,1))]
 		pub fn complete_task(origin: OriginFor<T>, task_id: T::Hash) -> DispatchResult {
-			
+
 			// Check that the extrinsic was signed and get the signer.
 			let signer = ensure_signed(origin)?;
 
@@ -239,7 +245,7 @@ pub mod pallet {
 
 			// Emit a Task Completed Event.
 			Self::deposit_event(Event::TaskCompleted(signer, task_id));
-			
+
 			Ok(())
 		}
 
@@ -247,7 +253,7 @@ pub mod pallet {
 		#[transactional]
 		#[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1,1))]
 		pub fn remove_task(origin: OriginFor<T>, task_id: T::Hash) -> DispatchResult {
-			
+
 			// Check that the extrinsic was signed and get the signer.
 			let signer = ensure_signed(origin)?;
 
@@ -256,19 +262,42 @@ pub mod pallet {
 
 			// Emit a Task Removed Event.
 			Self::deposit_event(Event::TaskRemoved(signer, task_id));
-			
+
 			Ok(())
 		}
 	}
-	
+
+	#[pallet::hooks]
+	impl<T:Config> Hooks<T::BlockNumber> for Pallet<T> {
+		fn on_initialize(_n: T::BlockNumber) -> frame_support::weights::Weight {
+			let mut weight = 0;
+			let current_timestamp = T::Time::now();
+			let task_hashes : Vec<T::Hash> = Tasks::<T>::iter_keys().collect();
+			for th in task_hashes {
+				let task = Tasks::<T>::get(th);
+				if let Some(task) = task {
+					let deadline_duration = Duration::from_millis(task.deadline.saturated_into::<u64>());
+					if deadline_duration < current_timestamp {
+						if let Ok(()) = Self::delete_task(&task.initiator, &th) {
+							weight += 10_000;
+						}
+					}
+				}
+			}
+			weight
+		}
+	}
+
 	// *** Helper functions *** //
 	impl<T:Config> Pallet<T> {
 
-		pub fn new_task(from_initiator: &T::AccountId, title: &[u8], specification: &[u8], budget: &BalanceOf<T>, deadline: &u32) -> Result<T::Hash, DispatchError> {
+		pub fn new_task(from_initiator: &T::AccountId, title: &[u8], specification: &[u8], budget: &BalanceOf<T>, deadline: u64) -> Result<T::Hash, DispatchError> {
 
 			// Ensure user has a profile before creating a task
 			ensure!(pallet_profile::Pallet::<T>::has_profile(from_initiator).unwrap(), <Error<T>>::NoProfile);
-			
+			let deadline_duration = Duration::from_millis(deadline.saturated_into::<u64>());
+			ensure!(T::Time::now() < deadline_duration, Error::<T>::IncorrectDeadlineTimestamp);
+
 			// Init Task Object
 			let task = Task::<T> {
 				title: title.to_vec(),
@@ -278,7 +307,7 @@ pub mod pallet {
 				status: Created,
 				budget: *budget,
 				current_owner: from_initiator.clone(),
-				deadline: *deadline,
+				deadline,
 			};
 
 			// Create hash of task
@@ -288,7 +317,7 @@ pub mod pallet {
 			<TasksOwned<T>>::try_mutate(&from_initiator, |tasks_vec| {
 				tasks_vec.try_push(task_id)
 			}).map_err(|_| <Error<T>>::ExceedMaxTasksOwned)?;
-			
+
 			// Insert task into Hashmap
 			<Tasks<T>>::insert(task_id, task);
 
@@ -304,7 +333,7 @@ pub mod pallet {
 			let mut task = Self::tasks(&task_id).ok_or(<Error<T>>::TaskNotExist)?;
 
 			// Remove task ownership from previous owner
-			let prev_owner = task.current_owner.clone(); 
+			let prev_owner = task.current_owner.clone();
 			<TasksOwned<T>>::try_mutate(&prev_owner, |owned| {
 				if let Some(index) = owned.iter().position(|&id| id == *task_id) {
 					owned.swap_remove(index);
@@ -329,7 +358,7 @@ pub mod pallet {
 
 
 		pub fn mark_finished(to: &T::AccountId, task_id: &T::Hash) -> Result<(), DispatchError> {
-			
+
 			// Check if task exists
 			let mut task = Self::tasks(&task_id).ok_or(<Error<T>>::TaskNotExist)?;
 
@@ -339,7 +368,7 @@ pub mod pallet {
 			// TODO: Check if the volunteer is the one who finished task
 
 
-			// Remove task ownership from current signer 
+			// Remove task ownership from current signer
 			<TasksOwned<T>>::try_mutate(&to, |owned| {
 				if let Some(index) = owned.iter().position(|&id| id == *task_id) {
 					owned.swap_remove(index);
@@ -367,7 +396,7 @@ pub mod pallet {
 		pub fn delete_task(task_initiator: &T::AccountId, task_id: &T::Hash) -> Result<(), DispatchError> {
 			// Check if task exists
 			let task = Self::tasks(&task_id).ok_or(<Error<T>>::TaskNotExist)?;
-			
+
 			//Check if the owner is the one who created task
 			ensure!(Self::is_task_initiator(task_id, task_initiator)?, <Error<T>>::OnlyInitiatorClosesTask);
 
@@ -394,7 +423,7 @@ pub mod pallet {
 			// Reduce task count
 			let new_count = Self::task_count().saturating_sub(1);
 			<TaskCount<T>>::put(new_count);
-			
+
 			Ok(())
 		}
 
