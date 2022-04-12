@@ -20,7 +20,6 @@ frame_support::construct_runtime!(
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
 		Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
 		Dao: pallet_dao::{Pallet, Call, Storage, Event<T>},
-		Task: pallet_task::{Pallet, Call, Storage, Event<T>},
 		Profile: pallet_profile::{Pallet, Call, Storage, Event<T>},
 	}
 );
@@ -65,11 +64,6 @@ parameter_types! {
 	pub const MaxTasksOwned: u32 = 77;
 }
 
-impl pallet_task::Config for Test {
-	type Event = Event;
-	type Currency = Balances;
-	type MaxTasksOwned = MaxTasksOwned;
-}
 
 impl pallet_profile::Config for Test {
 	type Event = Event;

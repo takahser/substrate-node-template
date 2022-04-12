@@ -77,10 +77,6 @@ version = '0.4.14'
 # package = 'pallet-did'
 # version = '3.0.0'
 
-[dependencies.pallet-task]
-default-features = false
-path = '../task'
-version = '0.0.42'
 
 [dependencies.pallet-profile]
 default-features = false
