@@ -1,10 +1,33 @@
 use crate::{mock::*, Error};
-use frame_support::{assert_noop, assert_ok};
+use frame_support::{assert_noop, assert_ok, traits::{UnixTime, Hooks}};
 use pallet_balances::Error as BalancesError;
 
-pub const DEADLINE:u32 = 77;
 pub const USERNAME:[u8; 1] = [7];
-pub const TITLE:[u8; 1] = [1];  
+pub const TITLE:[u8; 1] = [1];
+pub const MILLISEC_PER_BLOCK: u64 = 12000; // 12 sec for a block
+fn get_deadline() -> u64 {
+		// deadline is current time + 1 hour
+		let deadline = <Time as UnixTime>::now() + std::time::Duration::from_millis(3600 * 1000_u64);
+		let deadline_u64 = deadline.as_secs() * 1000_u64;
+		assert_eq!(deadline.as_millis(), deadline_u64 as u128);
+		deadline_u64
+}
+
+fn run_to_block(n: u64) {
+	Task::on_finalize(System::block_number());
+	for b in (System::block_number() + 1)..=n {
+		next_block(b);
+		if b != n {
+			Task::on_finalize(System::block_number());
+		}
+	}
+}
+
+fn next_block(n: u64) {
+	Time::set_timestamp(MILLISEC_PER_BLOCK * n);
+	System::set_block_number(n);
+	Task::on_initialize(n);
+}
 
 #[test]
 fn create_new_task(){
@@ -12,12 +35,12 @@ fn create_new_task(){
 
 		// Profile is necessary for task creation
 		assert_ok!(Profile::create_profile(Origin::signed(1), USERNAME.to_vec(), Vec::new()));
-		
+
 		let mut vec = Vec::new();
 		vec.push(2);
-		
+
 		// Ensure new task can be created with [signer, specification, budget, deadline]
-		assert_ok!(Task::create_task(Origin::signed(1), TITLE.to_vec(), vec, 7, DEADLINE));
+		assert_ok!(Task::create_task(Origin::signed(1), TITLE.to_vec(), vec, 7, get_deadline()));
 	});
 }
 
@@ -30,9 +53,9 @@ fn increase_task_count_when_creating_task(){
 
 		let mut vec = Vec::new();
 		vec.push(2);
-		
+
 		// Ensure new task can be created with [signer, specification, budget, deadline]
-		assert_ok!(Task::create_task(Origin::signed(1), TITLE.to_vec(), vec, 7, DEADLINE));
+		assert_ok!(Task::create_task(Origin::signed(1), TITLE.to_vec(), vec, 7, get_deadline()));
 
 		// Assert that count is incremented by 1 after task creation
 		assert_eq!(Task::task_count(), 1);
@@ -51,10 +74,10 @@ fn increase_task_count_when_creating_two_tasks(){
 
 		let mut vec2 = Vec::new();
 		vec2.push(7);
-		
+
 		// Ensure new task can be created with [signer, specification, budget, deadline]
-		assert_ok!(Task::create_task(Origin::signed(1), TITLE.to_vec(), vec1, 7, DEADLINE));
-		assert_ok!(Task::create_task(Origin::signed(1), TITLE.to_vec(), vec2, 99, DEADLINE));
+		assert_ok!(Task::create_task(Origin::signed(1), TITLE.to_vec(), vec1, 7, get_deadline()));
+		assert_ok!(Task::create_task(Origin::signed(1), TITLE.to_vec(), vec2, 99, get_deadline()));
 
 		// Assert that count is incremented to 2 after task creation
 		assert_eq!(Task::task_count(), 2);
@@ -72,13 +95,13 @@ fn cant_own_more_tax_than_max_tasks(){
 
 		// Create 77 tasks  ExceedMaxTasksOwned
 		for n in 0..77 {
-			
+
 			let mut vec1 = Vec::new();
 			vec1.push(n);
-			
+
 			// Ensure new task can be created with [signer, specification, budget, deadline]
-			assert_ok!(Task::create_task(Origin::signed(1), TITLE.to_vec(), vec1, 7, DEADLINE));
-		}	
+			assert_ok!(Task::create_task(Origin::signed(1), TITLE.to_vec(), vec1, 7, get_deadline()));
+		}
 
 		// Assert that count is incremented to 2 after task creation
 		assert_eq!(Task::task_count(), 77);
@@ -87,7 +110,7 @@ fn cant_own_more_tax_than_max_tasks(){
 		vec2.push(7);
 
 		// Assert that when creating the 77 Task, Error is thrown
-		assert_noop!(Task::create_task(Origin::signed(1), TITLE.to_vec(), vec2, 7, DEADLINE), Error::<Test>::ExceedMaxTasksOwned);
+		assert_noop!(Task::create_task(Origin::signed(1), TITLE.to_vec(), vec2, 7, get_deadline()), Error::<Test>::ExceedMaxTasksOwned);
 
 	});
 
@@ -103,7 +126,7 @@ fn assign_task_to_current_owner(){
 		let mut vec1 = Vec::new();
 		vec1.push(2);
 
-		assert_ok!(Task::create_task(Origin::signed(10), TITLE.to_vec(), vec1, 7, DEADLINE));
+		assert_ok!(Task::create_task(Origin::signed(10), TITLE.to_vec(), vec1, 7, get_deadline()));
 
 		// Get task through the hash
 		let hash = Task::tasks_owned(10)[0];
@@ -123,7 +146,7 @@ fn verify_inputs_outputs_to_tasks(){
 		let mut vec1 = Vec::new();
 		vec1.push(2);
 
-		assert_ok!(Task::create_task(Origin::signed(10), TITLE.to_vec(), vec1, 7, DEADLINE));
+		assert_ok!(Task::create_task(Origin::signed(10), TITLE.to_vec(), vec1, 7, get_deadline()));
 
 		// Get task through the hash
 		let hash = Task::tasks_owned(10)[0];
@@ -148,7 +171,7 @@ fn start_tasks_assigns_new_current_owner(){
 		vec1.push(2);
 
 		// Ensure new task can be created with [signer, specification, budget]
-		assert_ok!(Task::create_task(Origin::signed(1), TITLE.to_vec(), vec1, 7, DEADLINE));
+		assert_ok!(Task::create_task(Origin::signed(1), TITLE.to_vec(), vec1, 7, get_deadline()));
 
 		// Ensure new task is assigned to new current_owner (user 1)
 		let hash = Task::tasks_owned(1)[0];
@@ -158,7 +181,7 @@ fn start_tasks_assigns_new_current_owner(){
 
 		// Ensure task is started by new current_owner (user 2)
 		assert_ok!(Task::start_task(Origin::signed(2), hash));
-		
+
 		// Ensure when task is started user1 has 0 tasks, and user2 has 1
 		assert_eq!(Task::tasks_owned(1).len(), 0);
 		assert_eq!(Task::tasks_owned(2).len(), 1);
@@ -177,7 +200,7 @@ fn start_tasks_assigns_task_to_volunteer(){
 		vec1.push(2);
 
 		// Ensure new task can be created with [signer, specification, budget]
-		assert_ok!(Task::create_task(Origin::signed(1), TITLE.to_vec(), vec1, 7, DEADLINE));
+		assert_ok!(Task::create_task(Origin::signed(1), TITLE.to_vec(), vec1, 7, get_deadline()));
 
 		// Ensure new task is assigned to new current_owner (user 1)
 		let hash = Task::tasks_owned(1)[0];
@@ -187,7 +210,7 @@ fn start_tasks_assigns_task_to_volunteer(){
 
 		// Ensure task is started by new current_owner (user 2)
 		assert_ok!(Task::start_task(Origin::signed(2), hash));
-		
+
 		// Ensure when task is started it is assigned to volunteer (user 2)
 		assert_eq!(task.volunteer, 1);
 		assert_eq!(Task::tasks_owned(2).len(), 1);
@@ -206,7 +229,7 @@ fn completing_tasks_assigns_new_current_owner(){
 		vec1.push(2);
 
 		// Ensure new task can be created with [signer, specification, budget, deadline]
-		assert_ok!(Task::create_task(Origin::signed(1), TITLE.to_vec(), vec1, 7, DEADLINE));
+		assert_ok!(Task::create_task(Origin::signed(1), TITLE.to_vec(), vec1, 7, get_deadline()));
 
 		// Ensure new task is assigned to new current_owner (user 1)
 		let hash = Task::tasks_owned(1)[0];
@@ -216,11 +239,11 @@ fn completing_tasks_assigns_new_current_owner(){
 
 		// Ensure task is started by new current_owner (user 2)
 		assert_ok!(Task::start_task(Origin::signed(2), hash));
-		
+
 		// Ensure when task is started user1 has 0 tasks, and user2 has 1
 		assert_eq!(Task::tasks_owned(1).len(), 0);
 		assert_eq!(Task::tasks_owned(2).len(), 1);
-		
+
 		// Ensure task is completed by current current_owner (user 2)
 		assert_ok!(Task::complete_task(Origin::signed(2), hash));
 
@@ -243,7 +266,7 @@ fn only_creator_deletes_task(){
 		vec1.push(2);
 
 		// Ensure new task can be created with [signer, specification, budget]
-		assert_ok!(Task::create_task(Origin::signed(1), TITLE.to_vec(), vec1, 7, DEADLINE));
+		assert_ok!(Task::create_task(Origin::signed(1), TITLE.to_vec(), vec1, 7, get_deadline()));
 
 		// Ensure new task is assigned to new current_owner (user 1)
 		let hash = Task::tasks_owned(1)[0];
@@ -253,11 +276,11 @@ fn only_creator_deletes_task(){
 
 		// Ensure task is started by new current_owner (user 2)
 		assert_ok!(Task::start_task(Origin::signed(2), hash));
-		
+
 		// Ensure when task is started user1 has 0 tasks, and user2 has 1
 		assert_eq!(Task::tasks_owned(1).len(), 0);
 		assert_eq!(Task::tasks_owned(2).len(), 1);
-		
+
 		// Ensure task is completed by current current_owner (user 2)
 		assert_ok!(Task::complete_task(Origin::signed(2), hash));
 
@@ -283,7 +306,7 @@ fn only_started_task_can_be_completed(){
 		vec1.push(2);
 
 		// Ensure new task can be created with [signer, specification, budget, deadline]
-		assert_ok!(Task::create_task(Origin::signed(1), TITLE.to_vec(), vec1, 7, DEADLINE));
+		assert_ok!(Task::create_task(Origin::signed(1), TITLE.to_vec(), vec1, 7, get_deadline()));
 
 		// Ensure new task is assigned to new current_owner (user 1)
 		let hash = Task::tasks_owned(1)[0];
@@ -295,7 +318,7 @@ fn only_started_task_can_be_completed(){
 
 		// Ensure task is started by new current_owner (user 2)
 		assert_ok!(Task::start_task(Origin::signed(2), hash));
-		
+
 		// Ensure task is completed by current current_owner (user 2)
 		assert_ok!(Task::complete_task(Origin::signed(2), hash));
 	});
@@ -313,7 +336,7 @@ fn when_task_is_removed_ownership_is_cleared(){
 		vec1.push(2);
 
 		// Ensure new task can be created with [signer, specification, budget]
-		assert_ok!(Task::create_task(Origin::signed(1), TITLE.to_vec(), vec1, 7, DEADLINE));
+		assert_ok!(Task::create_task(Origin::signed(1), TITLE.to_vec(), vec1, 7, get_deadline()));
 
 		// Ensure new task is assigned to new current_owner (user 1)
 		let hash = Task::tasks_owned(1)[0];
@@ -323,11 +346,11 @@ fn when_task_is_removed_ownership_is_cleared(){
 
 		// Ensure task is started by new current_owner (user 2)
 		assert_ok!(Task::start_task(Origin::signed(2), hash));
-		
+
 		// Ensure when task is started user1 has 0 tasks, and user2 has 1
 		assert_eq!(Task::tasks_owned(1).len(), 0);
 		assert_eq!(Task::tasks_owned(2).len(), 1);
-		
+
 		// Ensure task is completed by current current_owner (user 2)
 		assert_ok!(Task::complete_task(Origin::signed(2), hash));
 
@@ -351,12 +374,12 @@ fn decrease_task_count_when_removing_task(){
 
 		// Profile is necessary for task creation
 		assert_ok!(Profile::create_profile(Origin::signed(1), USERNAME.to_vec(), Vec::new()));
-		
+
 		let mut vec = Vec::new();
 		vec.push(2);
-		
+
 		// Ensure new task can be created with [signer, specification, budget]
-		assert_ok!(Task::create_task(Origin::signed(1), TITLE.to_vec(), vec, 8, DEADLINE));
+		assert_ok!(Task::create_task(Origin::signed(1), TITLE.to_vec(), vec, 8, get_deadline()));
 
 		// Get hash of task owned
 		let hash = Task::tasks_owned(1)[0];
@@ -371,7 +394,7 @@ fn decrease_task_count_when_removing_task(){
 #[test]
 fn transfer_balance_works(){
 	new_test_ext().execute_with( || {
-		
+
 		// Transfer balance works using Mock
         // initially use has 10 units
 		assert_ok!(Task::transfer_balance(&1, &2, 7));
@@ -380,8 +403,8 @@ fn transfer_balance_works(){
 }
 
 
-// <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<  Integration tests  >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> 
- 
+// <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<  Integration tests  >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
 
 #[test]
 fn increase_profile_reputation_when_task_completed(){
@@ -395,7 +418,7 @@ fn increase_profile_reputation_when_task_completed(){
 		vec1.push(2);
 
 		// Ensure new task can be created with [signer, specification, budget]
-		assert_ok!(Task::create_task(Origin::signed(1), TITLE.to_vec(), vec1, 7, DEADLINE));
+		assert_ok!(Task::create_task(Origin::signed(1), TITLE.to_vec(), vec1, 7, get_deadline()));
 
 		// Ensure new task is assigned to new current_owner (user 1)
 		let hash = Task::tasks_owned(1)[0];
@@ -430,9 +453,9 @@ fn only_add_reputation_when_task_has_been_completed(){
 
 		let mut vec = Vec::new();
 		vec.push(2);
-		
+
 		// Ensure new task can be created with [signer, specification, budget]
-		assert_ok!(Task::create_task(Origin::signed(1), TITLE.to_vec(), vec, 8, DEADLINE));
+		assert_ok!(Task::create_task(Origin::signed(1), TITLE.to_vec(), vec, 8, get_deadline()));
 
 		// Get hash of task owned
 		let hash = Task::tasks_owned(1)[0];
@@ -447,3 +470,26 @@ fn only_add_reputation_when_task_has_been_completed(){
 		assert_eq!(profile.reputation, 0);
 	});
 }
+
+#[test]
+fn delete_task_after_deadline() {
+	new_test_ext().execute_with( || {
+		run_to_block(1);
+		// Profile is necessary for task creation
+		assert_ok!(Profile::create_profile(Origin::signed(1), USERNAME.to_vec(), Vec::new()));
+
+		let mut vec = Vec::new();
+		vec.push(2);
+
+		// Ensure new task can be created with [signer, specification, budget]
+		assert_ok!(Task::create_task(Origin::signed(1), TITLE.to_vec(), vec, 8, get_deadline()));
+		let hash = Task::tasks_owned(1)[0];
+		let task = Task::tasks(hash);
+		assert!(task.is_some());
+		// deadline is 1 hour => 3600 sec => 300 blocks as 12 secs per block
+		run_to_block(302);
+		let task = Task::tasks(hash);
+		assert!(task.is_none());
+	});
+}
+

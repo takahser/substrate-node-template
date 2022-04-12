@@ -81,6 +81,12 @@ git = 'https://github.com/paritytech/substrate.git'
 default-features = false
 tag = 'monthly-2021-11'
 
+[dependencies.pallet-timestamp]
+version = '4.0.0-dev'
+git = 'https://github.com/paritytech/substrate.git'
+default-features = false
+tag = 'monthly-2021-11'
+
 [dependencies.pallet-profile]
 default-features = false
 path = '../profile'
@@ -97,5 +103,6 @@ std = [
     'frame-support/std',
     'frame-system/std',
     'frame-benchmarking/std',
+	'pallet-timestamp/std',
 ]
 try-runtime = ['frame-support/try-runtime']
