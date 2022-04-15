@@ -6,6 +6,8 @@
 #[cfg(feature = "std")]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
+mod weights;
+
 use pallet_grandpa::{
 	fg_primitives, AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList,
 };
@@ -39,9 +41,6 @@ use pallet_transaction_payment::CurrencyAdapter;
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
 pub use sp_runtime::{Perbill, Permill};
-
-/// Import the template pallet.
-pub use pallet_template;
 
 /// An index to a block.
 pub type BlockNumber = u32;
@@ -274,11 +273,6 @@ impl pallet_sudo::Config for Runtime {
 	type Call = Call;
 }
 
-/// Configure the pallet-template in pallets/template.
-impl pallet_template::Config for Runtime {
-	type Event = Event;
-}
-
 parameter_types! {
 	// Max tasks per user.
 	pub const MaxTasksOwned: u32 = 77;
@@ -290,17 +284,20 @@ impl pallet_task::Config for Runtime {
 	type Currency = Balances;
 	type MaxTasksOwned = MaxTasksOwned;
 	type Time = Timestamp;
+	type WeightInfo = weights::task::WeightInfo<Runtime>;
 }
 
 // Configure the pallet-dao.
 impl pallet_dao::Config for Runtime {
 	type Event = Event;
+	type WeightInfo = weights::dao::WeightInfo<Runtime>;
 }
 
 // Configure the pallet-profile.
 impl pallet_profile::Config for Runtime {
 	type Event = Event;
 	type Currency = Balances;
+	type WeightInfo =  weights::profile::WeightInfo<Runtime>;
 }
 
 
@@ -320,8 +317,6 @@ construct_runtime!(
 		Balances: pallet_balances,
 		TransactionPayment: pallet_transaction_payment,
 		Sudo: pallet_sudo,
-		// Include the custom logic from the pallet-template in the runtime.
-		TemplateModule: pallet_template,
 		Task: pallet_task::{Pallet, Call, Storage, Event<T>},
 		Profile: pallet_profile::{Pallet, Call, Storage, Event<T>},
 		Dao: pallet_dao::{Pallet, Call, Storage, Event<T>},
@@ -503,7 +498,6 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, frame_system, SystemBench::<Runtime>);
 			list_benchmark!(list, extra, pallet_balances, Balances);
 			list_benchmark!(list, extra, pallet_timestamp, Timestamp);
-			list_benchmark!(list, extra, pallet_template, TemplateModule);
 			list_benchmark!(list, extra, pallet_profile, Profile);
 			list_benchmark!(list, extra, pallet_task, Task);
 			list_benchmark!(list, extra, pallet_dao, Dao);
@@ -544,7 +538,6 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, frame_system, SystemBench::<Runtime>);
 			add_benchmark!(params, batches, pallet_balances, Balances);
 			add_benchmark!(params, batches, pallet_timestamp, Timestamp);
-			add_benchmark!(params, batches, pallet_template, TemplateModule);
 			add_benchmark!(params, batches, pallet_profile, Profile);
 			add_benchmark!(params, batches, pallet_task, Task);
 			add_benchmark!(params, batches, pallet_dao, Dao);

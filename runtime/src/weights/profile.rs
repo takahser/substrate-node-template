@@ -32,26 +32,23 @@ use sp_std::marker::PhantomData;
 
 /// Weight functions for `pallet_profile`.
 pub struct WeightInfo<T>(PhantomData<T>);
-impl<T: frame_system::Config> pallet_profile::WeightInfo for WeightInfo<T> {
-	fn benchmark_name() -> Weight {
-		(0 as Weight)
-	}
+impl<T: frame_system::Config> pallet_profile::weights::WeightInfo for WeightInfo<T> {
 	// Storage: Profile Profiles (r:1 w:1)
 	// Storage: Profile ProfileCount (r:1 w:1)
-	fn profile_creation(_x: u32, _s: u32, ) -> Weight {
+	fn create_profile() -> Weight {
 		(19_220_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 	}
 	// Storage: Profile Profiles (r:1 w:1)
-	fn profile_update(_s: u32, ) -> Weight {
+	fn update_profile() -> Weight {
 		(15_065_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	// Storage: Profile Profiles (r:1 w:1)
 	// Storage: Profile ProfileCount (r:1 w:1)
-	fn profile_remove(_s: u32, ) -> Weight {
+	fn remove_profile() -> Weight {
 		(16_872_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))

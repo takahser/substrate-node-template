@@ -32,80 +32,75 @@ use sp_std::marker::PhantomData;
 
 /// Weight functions for `pallet_dao`.
 pub struct WeightInfo<T>(PhantomData<T>);
-impl<T: frame_system::Config> pallet_dao::WeightInfo for WeightInfo<T> {
-	fn benchmark_name() -> Weight {
-		(0 as Weight)
-	}
+impl<T: frame_system::Config> pallet_dao::weights::WeightInfo for WeightInfo<T> {
 	// Storage: Dao Vision (r:1 w:1)
 	// Storage: Dao VisionCount (r:1 w:1)
-	fn create_vision(_s: u32, ) -> Weight {
+	fn create_vision() -> Weight {
 		(17_019_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 	}
 	// Storage: Dao Vision (r:1 w:1)
 	// Storage: Dao VisionCount (r:1 w:1)
-	fn remove_vision(_s: u32, ) -> Weight {
+	fn remove_vision() -> Weight {
 		(18_426_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 	}
 	// Storage: Dao Vision (r:1 w:0)
 	// Storage: Dao VisionSigner (r:1 w:1)
-	fn sign_vision(_s: u32, ) -> Weight {
+	fn sign_vision() -> Weight {
 		(16_754_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	// Storage: Dao Vision (r:1 w:0)
 	// Storage: Dao VisionSigner (r:1 w:1)
-	fn unsign_vision(s: u32, ) -> Weight {
+	fn unsign_vision() -> Weight {
 		(17_688_000 as Weight)
 			// Standard Error: 0
-			.saturating_add((1_000 as Weight).saturating_mul(s as Weight))
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	// Storage: Dao Organization (r:1 w:1)
 	// Storage: Dao OrganizationCount (r:1 w:1)
-	fn create_organization(s: u32, ) -> Weight {
+	fn create_organization() -> Weight {
 		(15_675_000 as Weight)
 			// Standard Error: 0
-			.saturating_add((3_000 as Weight).saturating_mul(s as Weight))
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 	}
 	// Storage: Dao Organization (r:1 w:1)
 	// Storage: Dao OrganizationCount (r:1 w:1)
-	fn dissolve_organization(_s: u32, ) -> Weight {
+	fn dissolve_organization() -> Weight {
 		(17_111_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 	}
 	// Storage: Dao Organization (r:1 w:1)
 	// Storage: Dao MemberOf (r:1 w:1)
-	fn add_members(_s: u32, ) -> Weight {
+	fn add_members() -> Weight {
 		(20_260_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 	}
 	// Storage: Dao Organization (r:1 w:0)
 	// Storage: Dao OrganizationTasks (r:1 w:1)
-	fn add_tasks(_s: u32, ) -> Weight {
+	fn add_tasks() -> Weight {
 		(18_843_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	// Storage: Dao Organization (r:1 w:1)
 	// Storage: Dao MemberOf (r:1 w:1)
-	fn remove_members(_s: u32, ) -> Weight {
+	fn remove_members() -> Weight {
 		(23_003_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 	}
 	// Storage: Dao Organization (r:1 w:0)
 	// Storage: Dao OrganizationTasks (r:1 w:1)
-	fn remove_tasks(_s: u32, ) -> Weight {
+	fn remove_tasks() -> Weight {
 		(19_508_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))

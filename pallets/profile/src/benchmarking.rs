@@ -34,11 +34,11 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
 
 // This creates an `Profile` object.
 fn create_profile_info<T: Config>(_num_fields: u32) -> Profile<T> {
-	
+
 	let s: u8 = u8::MAX.into();
 	let interests = vec![0u8, s as u8];
 	let username = vec![0u8, s as u8];
-	
+
 	let caller: T::AccountId = whitelisted_caller();
 	let balance = T::Currency::free_balance(&caller);
 
@@ -55,19 +55,9 @@ fn create_profile_info<T: Config>(_num_fields: u32) -> Profile<T> {
 
 
 benchmarks! {
-	// ** Template for testing extrinsic functions ** //
- 	benchmark_name {
-		/* setup initial state */
-	}: {
-		/* the code to be benchmarked */
-	}
-	verify {
-		/* verifying final state */
-	}
-
 	profile_creation {
 		/* setup initial state */
-		
+
 		let caller: T::AccountId = whitelisted_caller();
 
 		// Populate data fields
@@ -78,7 +68,7 @@ benchmarks! {
 		let username = vec![0u8, s as u8];
 
 	}: create_profile(RawOrigin::Signed(caller), username,  interests)
-	
+
 	verify {
 		/* verifying final state */
 		let caller: T::AccountId = whitelisted_caller();
@@ -97,9 +87,9 @@ benchmarks! {
 
 		// before we update profile, profile must be created
 		let _ = PalletProfile::<T>::create_profile(RawOrigin::Signed(create_account_caller).into(), username.clone(), interests.clone());
-		
+
 	}: update_profile(RawOrigin::Signed(update_account_caller), username, interests)
-	
+
 	verify {
 		/* verifying final state */
 		let caller: T::AccountId = whitelisted_caller();
@@ -120,7 +110,7 @@ benchmarks! {
 		let _ = PalletProfile::<T>::create_profile(RawOrigin::Signed(create_account_caller).into(), username, interests);
 
 	}: remove_profile(RawOrigin::Signed(delete_account_caller))
-	
+
 	verify {
 		/* verifying final state */
 		let caller: T::AccountId = whitelisted_caller();

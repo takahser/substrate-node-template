@@ -32,29 +32,26 @@ use sp_std::marker::PhantomData;
 
 /// Weight functions for `pallet_task`.
 pub struct WeightInfo<T>(PhantomData<T>);
-impl<T: frame_system::Config> pallet_task::WeightInfo for WeightInfo<T> {
-	fn benchmark_name() -> Weight {
-		(0 as Weight)
-	}
+impl<T: frame_system::Config> pallet_task::weights::WeightInfo for WeightInfo<T> {
 	// Storage: Profile Profiles (r:1 w:0)
 	// Storage: Task TasksOwned (r:1 w:1)
 	// Storage: Task TaskCount (r:1 w:1)
 	// Storage: Task Tasks (r:0 w:1)
-	fn create_task(_s: u32, _x: u32, ) -> Weight {
+	fn create_task() -> Weight {
 		(21_774_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(3 as Weight))
 			.saturating_add(T::DbWeight::get().writes(3 as Weight))
 	}
 	// Storage: Task Tasks (r:1 w:1)
 	// Storage: Task TasksOwned (r:1 w:1)
-	fn start_task(_s: u32, _x: u32, ) -> Weight {
+	fn start_task() -> Weight {
 		(21_839_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 	}
 	// Storage: Task Tasks (r:1 w:1)
 	// Storage: Task TasksOwned (r:1 w:1)
-	fn complete_task(_s: u32, _x: u32, ) -> Weight {
+	fn complete_task() -> Weight {
 		(21_867_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
@@ -62,7 +59,7 @@ impl<T: frame_system::Config> pallet_task::WeightInfo for WeightInfo<T> {
 	// Storage: Task Tasks (r:1 w:1)
 	// Storage: Task TasksOwned (r:1 w:1)
 	// Storage: Task TaskCount (r:1 w:1)
-	fn remove_task(_s: u32, _x: u32, ) -> Weight {
+	fn remove_task() -> Weight {
 		(36_173_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(3 as Weight))
 			.saturating_add(T::DbWeight::get().writes(3 as Weight))

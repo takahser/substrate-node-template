@@ -25,16 +25,16 @@
 //!
 //! The Profile Pallet creates a user profile per AccountID.
 //! The Profile is used to enrich the AccountID information with user specific
-//! metadata such as personal interests, name, reputation, etc. 
+//! metadata such as personal interests, name, reputation, etc.
 //!
 //! ## Interface
 //!
 //! ### Public Functions
 //!
 //! - `create_profile` - Function used to create a new user profile.
-//! 
+//!
 //! - `update_profile` - Function used to update an already existing user profile.
-//! 
+//!
 //! - `remove_profile` - Function used to delete an existing user profile.
 //!
 //! ## Related Modules
@@ -53,16 +53,18 @@ mod tests;
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
+pub mod weights;
 
 #[frame_support::pallet]
 pub mod pallet {
 	use frame_support::{dispatch::DispatchResult, pallet_prelude::*};
 	use frame_system::pallet_prelude::*;
 	use frame_support::{
-		sp_runtime::traits::Hash, 
+		sp_runtime::traits::Hash,
 		traits::{Currency}};
 	use scale_info::TypeInfo;
 	use sp_std::vec::Vec;
+	use crate::weights::WeightInfo;
 
 
 	// Account, Balance are used in Profile Struct
@@ -90,6 +92,9 @@ pub mod pallet {
 
 		/// The Currency handler for the Profile pallet.
 		type Currency: Currency<Self::AccountId>;
+
+		/// WeightInfo provider.
+		type WeightInfo: WeightInfo;
 	}
 
 	#[pallet::pallet]
@@ -106,11 +111,11 @@ pub mod pallet {
 	/// Stores a Profile unique properties in a StorageMap.
 	pub(super) type Profiles<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, Profile<T>>;
 
-	
+
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// Profile was successfully created. 
+		/// Profile was successfully created.
 		ProfileCreated { who: T::AccountId },
 
 		/// Profile was successfully deleted.
@@ -130,7 +135,7 @@ pub mod pallet {
 		NoUpdateAuthority,
 		/// Profiles can only be deleted by the creator
 		NoDeletionAuthority,
-		/// One Account can only create a single profile. 
+		/// One Account can only create a single profile.
 		ProfileAlreadyCreated,
 		/// This Account has not yet created a profile.
 		NoProfileCreated,
@@ -143,9 +148,9 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 
 		/// Dispatchable call that enables every new actor to create personal profile in storage.
-		#[pallet::weight(10_000 + T::DbWeight::get().writes(1))]
+		#[pallet::weight(<T as Config>::WeightInfo::create_profile())]
 		pub fn create_profile(origin: OriginFor<T>, username: Vec<u8>, interests: Vec<u8>) -> DispatchResult {
-			
+
 			// Check that the extrinsic was signed and get the signer.
 			let account = ensure_signed(origin)?;
 
@@ -154,31 +159,31 @@ pub mod pallet {
 
 			// Emit an event.
 			Self::deposit_event(Event::ProfileCreated{ who:account });
-			
+
 			Ok(())
 		}
 
 		/// Dispatchable call that ensures user can update existing personal profile in storage.
-		#[pallet::weight(10_000 + T::DbWeight::get().writes(1))]
+		#[pallet::weight(<T as Config>::WeightInfo::update_profile())]
 		pub fn update_profile(origin: OriginFor<T>, username: Vec<u8>, interests: Vec<u8>) -> DispatchResult {
 
 			// Check that the extrinsic was signed and get the signer.
 			let account = ensure_signed(origin)?;
-			
+
 			// Since Each account can have one profile, we call into generate profile again
 			let _profile_id = Self::change_profile(&account, username, interests)?;
 
 			// Emit an event.
 			Self::deposit_event(Event::ProfileUpdated{ who: account });
-			
+
 			Ok(())
 		}
 
 
 		/// Dispatchable call that enables every new actor to delete profile from storage.
-		#[pallet::weight(10_000 + T::DbWeight::get().writes(1))]
+		#[pallet::weight(<T as Config>::WeightInfo::remove_profile())]
 		pub fn remove_profile(origin: OriginFor<T>) -> DispatchResult {
-			
+
 			// Check that the extrinsic was signed and get the signer.
 			let account = ensure_signed(origin)?;
 
@@ -187,7 +192,7 @@ pub mod pallet {
 
 			// Emit an event.
 			Self::deposit_event(Event::ProfileDeleted{ who : account});
-			
+
 			Ok(())
 		}
 
@@ -197,7 +202,7 @@ pub mod pallet {
 	impl<T:Config> Pallet<T> {
 		// Generates initial Profile.
 		pub fn generate_profile(owner: &T::AccountId, username: Vec<u8>, interests_vec: Vec<u8>) -> Result<T::Hash, Error<T>> {
-			
+
 			// Check if profile already exists for owner
 			ensure!(!Profiles::<T>::contains_key(&owner), Error::<T>::ProfileAlreadyCreated);
 
@@ -228,10 +233,10 @@ pub mod pallet {
 
 		// Changes existing profile
 		pub fn change_profile(owner: &T::AccountId, new_username: Vec<u8>, new_interests: Vec<u8>) -> Result<T::Hash, Error<T>> {
-			
+
 			// Ensure that only owner can update profile
 			let mut profile = Self::profiles(owner).ok_or(<Error<T>>::NoUpdateAuthority)?;
-			
+
 			// Change interests of owner
 			profile.change_interests(new_interests);
 
@@ -249,23 +254,23 @@ pub mod pallet {
 
 		// Public function that deletes a user profile
 		pub fn delete_profile(owner: &T::AccountId) -> Result<(), Error<T>> {
-			
+
 			// Ensure that only creator of profile can delete it
 			Self::profiles(owner).ok_or(<Error<T>>::NoDeletionAuthority)?;
-			
+
 			// Remove profile from storage
 			<Profiles<T>>::remove(owner);
 
 			// Reduce profile count
 			let new_count = Self::profile_count().saturating_sub(1);
 			<ProfileCount<T>>::put(new_count);
-			
+
 			Ok(())
 		}
 
 		// Public function that adds reputation to a profile
 		pub fn add_reputation(owner: &T::AccountId) -> Result<(), Error<T>> {
-			
+
 			// Get current profile
 			let mut profile = Self::profiles(owner).ok_or(<Error<T>>::NoUpdateAuthority)?;
 
@@ -305,6 +310,6 @@ pub mod pallet {
 		pub fn change_username(&mut self, new_username: Vec<u8>) {
 			self.name = new_username;
 		}
-	} 
+	}
 
 }

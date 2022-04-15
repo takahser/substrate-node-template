@@ -59,6 +59,7 @@ impl system::Config for Test {
 impl pallet_profile::Config for Test {
 	type Event = Event;
 	type Currency =  Balances;
+	type WeightInfo = ();
 }
 
 parameter_types! {
