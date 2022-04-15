@@ -289,6 +289,7 @@ impl pallet_task::Config for Runtime {
 	type Event = Event;
 	type Currency = Balances;
 	type MaxTasksOwned = MaxTasksOwned;
+	type Time = Timestamp;
 }
 
 // Configure the pallet-dao.
