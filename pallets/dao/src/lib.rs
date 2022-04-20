@@ -234,7 +234,7 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 
 		/// Function for creating a vision and publishing it on chain [origin, vision]
-		#[pallet::weight(<T as Config>::WeightInfo::create_vision())]
+		#[pallet::weight(<T as Config>::WeightInfo::create_vision(0))]
 		pub fn create_vision(origin: OriginFor<T>, vision_document: Vec<u8>) -> DispatchResult {
 
 			// Check that the extrinsic was signed and get the signer.
@@ -260,7 +260,7 @@ pub mod pallet {
 		}
 
 		/// Function for removing a vision document [origin, vision]
-		#[pallet::weight(<T as Config>::WeightInfo::remove_vision())]
+		#[pallet::weight(<T as Config>::WeightInfo::remove_vision(0))]
         pub fn remove_vision(origin: OriginFor<T>, vision_document: Vec<u8>) -> DispatchResult {
 
 			// Check that the extrinsic was signed and get the signer.
@@ -290,7 +290,7 @@ pub mod pallet {
 
 
 		/// Function for signing a vision document [origin, vision]
-		#[pallet::weight(<T as Config>::WeightInfo::sign_vision())]
+		#[pallet::weight(<T as Config>::WeightInfo::sign_vision(0))]
 		pub fn sign_vision(origin: OriginFor<T>, vision_document: Vec<u8>) -> DispatchResult {
 
 			// Check that the extrinsic was signed and get the signer.
@@ -305,7 +305,7 @@ pub mod pallet {
 		}
 
 		/// Function for unsigning a vision document [origin, vision]
-		#[pallet::weight(<T as Config>::WeightInfo::unsign_vision())]
+		#[pallet::weight(<T as Config>::WeightInfo::unsign_vision(0))]
 		pub fn unsign_vision(origin: OriginFor<T>, vision_document: Vec<u8>) -> DispatchResult {
 
 			// Check that the extrinsic was signed and get the signer.
@@ -320,7 +320,7 @@ pub mod pallet {
 		}
 
 		/// Function for creating an organization [origin, name of org]
-		#[pallet::weight(<T as Config>::WeightInfo::create_organization())]
+		#[pallet::weight(<T as Config>::WeightInfo::create_organization(0))]
 		pub fn create_organization(origin: OriginFor<T>, org_name: Vec<u8>) -> DispatchResult {
 
 			// Check that the extrinsic was signed and get the signer.
@@ -338,7 +338,7 @@ pub mod pallet {
 		}
 
 		/// Function for adding member to an organization [origin, name_org, AccountID]
-		#[pallet::weight(<T as Config>::WeightInfo::add_members())]
+		#[pallet::weight(<T as Config>::WeightInfo::add_members(0))]
 		pub fn add_members(origin: OriginFor<T>, org_name: Vec<u8>, account: T::AccountId) -> DispatchResult {
 
 			// Check that the extrinsic was signed and get the signer.
@@ -354,7 +354,7 @@ pub mod pallet {
 		}
 
 		/// Function for adding tasks to an organization [origin, name_org, task_hash]
-		#[pallet::weight(<T as Config>::WeightInfo::add_tasks())]
+		#[pallet::weight(<T as Config>::WeightInfo::add_tasks(0))]
 		pub fn add_tasks(origin: OriginFor<T>, org_name: Vec<u8>, task: T::Hash) -> DispatchResult {
 
 			// Check that the extrinsic was signed and get the signer.
@@ -370,7 +370,7 @@ pub mod pallet {
 		}
 
 		/// Function for removing member from an organization [origin, name_org, AccountID]
-		#[pallet::weight(<T as Config>::WeightInfo::remove_members())]
+		#[pallet::weight(<T as Config>::WeightInfo::remove_members(0))]
 		pub fn remove_members(origin: OriginFor<T>, org_name: Vec<u8>, account: T::AccountId) -> DispatchResult {
 
 			// Check that the extrinsic was signed and get the signer.
@@ -386,7 +386,7 @@ pub mod pallet {
 		}
 
 		/// Function for removing tasks from an organization [origin, name_org, task_hash]
-		#[pallet::weight(<T as Config>::WeightInfo::remove_tasks())]
+		#[pallet::weight(<T as Config>::WeightInfo::remove_tasks(0))]
 		pub fn remove_tasks(origin: OriginFor<T>, org_name: Vec<u8>, task: T::Hash) -> DispatchResult {
 
 			// Check that the extrinsic was signed and get the signer.
@@ -402,7 +402,7 @@ pub mod pallet {
 		}
 
 		/// Function for dissolving an organization [origin, name_org]
-		#[pallet::weight(<T as Config>::WeightInfo::dissolve_organization())]
+		#[pallet::weight(<T as Config>::WeightInfo::dissolve_organization(0))]
 		pub fn dissolve_organization(origin: OriginFor<T>, org_name: Vec<u8>) -> DispatchResult {
 
 			// Check that the extrinsic was signed and get the signer.

@@ -55,7 +55,7 @@ fn create_profile_info<T: Config>(_num_fields: u32) -> Profile<T> {
 
 
 benchmarks! {
-	profile_creation {
+	create_profile {
 		/* setup initial state */
 
 		let caller: T::AccountId = whitelisted_caller();
@@ -75,7 +75,7 @@ benchmarks! {
 		assert_last_event::<T>(Event::<T>::ProfileCreated { who: caller }.into());
 	}
 
-	profile_update {
+	update_profile {
 		/* setup initial state */
 		let create_account_caller: T::AccountId = whitelisted_caller();
 		let update_account_caller: T::AccountId = whitelisted_caller();
@@ -96,7 +96,7 @@ benchmarks! {
 		assert_last_event::<T>(Event::<T>::ProfileUpdated { who: caller }.into());
 	}
 
-	profile_remove {
+	remove_profile {
 		/* setup initial state */
 		let create_account_caller: T::AccountId = whitelisted_caller();
 		let delete_account_caller: T::AccountId = whitelisted_caller();

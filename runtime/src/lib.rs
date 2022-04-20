@@ -6,8 +6,6 @@
 #[cfg(feature = "std")]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
-mod weights;
-
 use pallet_grandpa::{
 	fg_primitives, AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList,
 };
@@ -284,20 +282,20 @@ impl pallet_task::Config for Runtime {
 	type Currency = Balances;
 	type MaxTasksOwned = MaxTasksOwned;
 	type Time = Timestamp;
-	type WeightInfo = weights::task::WeightInfo<Runtime>;
+	type WeightInfo = pallet_task::weights::SubstrateWeight<Runtime>;
 }
 
 // Configure the pallet-dao.
 impl pallet_dao::Config for Runtime {
 	type Event = Event;
-	type WeightInfo = weights::dao::WeightInfo<Runtime>;
+	type WeightInfo = pallet_dao::weights::SubstrateWeight<Runtime>;
 }
 
 // Configure the pallet-profile.
 impl pallet_profile::Config for Runtime {
 	type Event = Event;
 	type Currency = Balances;
-	type WeightInfo =  weights::profile::WeightInfo<Runtime>;
+	type WeightInfo = pallet_profile::weights::SubstrateWeight<Runtime>;
 }
 
 

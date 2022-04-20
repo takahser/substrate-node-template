@@ -204,7 +204,7 @@ pub mod pallet {
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		/// Function call that creates tasks.  [ origin, specification, budget, deadline]
-		#[pallet::weight(<T as Config>::WeightInfo::create_task())]
+		#[pallet::weight(<T as Config>::WeightInfo::create_task(0,0))]
 		pub fn create_task(origin: OriginFor<T>, title: Vec<u8>, specification: Vec<u8>, budget: BalanceOf<T>, deadline: u64) -> DispatchResultWithPostInfo {
 
 			// Check that the extrinsic was signed and get the signer.
@@ -223,7 +223,7 @@ pub mod pallet {
 		}
 
 		/// Function call that starts a task by assigning new task owner. [origin, task_id]
-		#[pallet::weight(<T as Config>::WeightInfo::start_task())]
+		#[pallet::weight(<T as Config>::WeightInfo::start_task(0,0))]
 		pub fn start_task(origin: OriginFor<T>, task_id: T::Hash) -> DispatchResult {
 
 			// Check that the extrinsic was signed and get the signer.
@@ -239,7 +239,7 @@ pub mod pallet {
 		}
 
 		/// Function that completes a task [origin, task_id]
-		#[pallet::weight(<T as Config>::WeightInfo::complete_task())]
+		#[pallet::weight(<T as Config>::WeightInfo::complete_task(0,0))]
 		pub fn complete_task(origin: OriginFor<T>, task_id: T::Hash) -> DispatchResult {
 
 			// Check that the extrinsic was signed and get the signer.
@@ -256,7 +256,7 @@ pub mod pallet {
 
 		/// Function to remove task. [origin, task_id]
 		#[transactional]
-		#[pallet::weight(<T as Config>::WeightInfo::remove_task())]
+		#[pallet::weight(<T as Config>::WeightInfo::remove_task(0,0))]
 		pub fn remove_task(origin: OriginFor<T>, task_id: T::Hash) -> DispatchResult {
 
 			// Check that the extrinsic was signed and get the signer.

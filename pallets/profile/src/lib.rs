@@ -148,7 +148,7 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 
 		/// Dispatchable call that enables every new actor to create personal profile in storage.
-		#[pallet::weight(<T as Config>::WeightInfo::create_profile())]
+		#[pallet::weight(<T as Config>::WeightInfo::create_profile(0,0))]
 		pub fn create_profile(origin: OriginFor<T>, username: Vec<u8>, interests: Vec<u8>) -> DispatchResult {
 
 			// Check that the extrinsic was signed and get the signer.
@@ -164,7 +164,7 @@ pub mod pallet {
 		}
 
 		/// Dispatchable call that ensures user can update existing personal profile in storage.
-		#[pallet::weight(<T as Config>::WeightInfo::update_profile())]
+		#[pallet::weight(<T as Config>::WeightInfo::update_profile(0))]
 		pub fn update_profile(origin: OriginFor<T>, username: Vec<u8>, interests: Vec<u8>) -> DispatchResult {
 
 			// Check that the extrinsic was signed and get the signer.
@@ -181,7 +181,7 @@ pub mod pallet {
 
 
 		/// Dispatchable call that enables every new actor to delete profile from storage.
-		#[pallet::weight(<T as Config>::WeightInfo::remove_profile())]
+		#[pallet::weight(<T as Config>::WeightInfo::remove_profile(0))]
 		pub fn remove_profile(origin: OriginFor<T>) -> DispatchResult {
 
 			// Check that the extrinsic was signed and get the signer.
