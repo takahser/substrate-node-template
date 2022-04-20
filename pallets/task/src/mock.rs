@@ -72,11 +72,6 @@ parameter_types! {
 	pub const ExistentialDeposit: u64 = 1;
 }
 
-impl pallet_profile::Config for Test {
-	type Event = Event;
-	type Currency =  Balances;
-}
-
 impl pallet_balances::Config for Test {
 	type ReserveIdentifier = [u8; 8];
 	type MaxLocks = ();
@@ -86,6 +81,12 @@ impl pallet_balances::Config for Test {
 	type DustRemoval = ();
 	type ExistentialDeposit = ExistentialDeposit;
 	type AccountStore = System;
+	type WeightInfo = ();
+}
+
+impl pallet_profile::Config for Test {
+	type Event = Event;
+	type Currency = Balances;
 	type WeightInfo = ();
 }
 
@@ -99,6 +100,7 @@ impl pallet_task::Config for Test {
 	type Currency = Balances;
 	type MaxTasksOwned = MaxTasksOwned;
 	type Time = Time;
+	type WeightInfo = ();
 }
 
 pub(crate) fn new_test_ext() -> sp_io::TestExternalities {

@@ -33,7 +33,7 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
 
 // This creates and returns a `Task` object.
 fn create_task_info<T: Config>(_num_fields: u32) -> Task<T> {
-	
+
 	// Populate with worst case scenario
 	let mut data = Vec::new();
 	data.push(u8::MAX);
@@ -43,7 +43,7 @@ fn create_task_info<T: Config>(_num_fields: u32) -> Task<T> {
 	let volunteer: T::AccountId = whitelisted_caller();
 	let owner: T::AccountId = whitelisted_caller();
 	let balance = <T as pallet::Config>::Currency::total_balance(&initiator);
-	let deadline = u32::MAX;
+	let deadline = u64::MAX;
 	let status: TaskStatus = TaskStatus::InProgress;
 
 	// Create object
@@ -74,15 +74,6 @@ fn create_profile<T: Config>(){
 
 
 benchmarks! {
-	benchmark_name {
-		/* setup initial state */
-	}: {
-		/* the code to be benchmarked */
-	}
-	verify {
-		/* verifying final state */
-	}
-
 	create_task {
 		/* setup initial state */
 		let caller: T::AccountId = whitelisted_caller();
@@ -97,11 +88,11 @@ benchmarks! {
 		// Create profile before creating a task
 		create_profile::<T>();
 		create_task_info::<T>(1);
-		
-	}: 
+
+	}:
 	/* the code to be benchmarked */
-	create_task(RawOrigin::Signed(caller.clone()), title, specification, budget, x)
-	
+	create_task(RawOrigin::Signed(caller.clone()), title, specification, budget, x.into())
+
 	verify {
 		/* verifying final state */
 		let caller: T::AccountId = whitelisted_caller();
@@ -117,19 +108,19 @@ benchmarks! {
 
 		// Populate data fields
 		let s in 1 .. u8::MAX.into(); // max bytes for specification
-		let x in 1 .. 2000; 
+		let x in 1 .. 2000;
 		let title = vec![0u8, s as u8];
 		let specification = vec![0u8, s as u8];
 		let budget = <T as pallet::Config>::Currency::total_balance(&caller_create);
 
 		// Create profile before creating a task
-		create_profile::<T>();		
+		create_profile::<T>();
 		let _ = PalletTask::<T>::create_task(RawOrigin::Signed(caller_create.clone()).into(), title, specification, budget, x.into());
 		let hash_task = PalletTask::<T>::tasks_owned(&caller_create)[0];
-		
+
 	}: start_task(RawOrigin::Signed(caller_start.clone()), hash_task)
 		/* the code to be benchmarked */
-	
+
 	verify {
 		/* verifying final state */
 		assert_last_event::<T>(Event::<T>::TaskAssigned(caller_start, hash_task).into());
@@ -143,19 +134,19 @@ benchmarks! {
 		// Populate data fields
 		let s in 1 .. u8::MAX.into(); // max bytes for specification
 		let x in 1 .. 2000;
-		let title = vec![0u8, s as u8]; 
+		let title = vec![0u8, s as u8];
 		let specification = vec![0u8, s as u8];
 		let budget = <T as pallet::Config>::Currency::total_balance(&caller_create);
 
 		// Create profile before creating a task
-		create_profile::<T>();		
+		create_profile::<T>();
 		let _ = PalletTask::<T>::create_task(RawOrigin::Signed(caller_create.clone()).into(), title, specification, budget, x.into());
 		let hash_task = PalletTask::<T>::tasks_owned(&caller_create)[0];
 		let _ = PalletTask::<T>::start_task(RawOrigin::Signed(caller_complete.clone()).into(), hash_task.clone());
 
 	}: complete_task(RawOrigin::Signed(caller_complete.clone()), hash_task)
 		/* the code to be benchmarked */
-	
+
 	verify {
 		/* verifying final state */
 		assert_last_event::<T>(Event::<T>::TaskCompleted(caller_complete, hash_task).into());
@@ -169,19 +160,19 @@ benchmarks! {
 		// Populate data fields
 		let s in 1 .. u8::MAX.into(); // max bytes for specification
 		let x in 1 .. 4000;
-		let title = vec![0u8, s as u8]; 
+		let title = vec![0u8, s as u8];
 		let specification = vec![0u8, s as u8];
 		let budget = <T as pallet::Config>::Currency::total_balance(&caller_create);
 
 		// Create profile before creating a task
-		create_profile::<T>();		
+		create_profile::<T>();
 		let _ = PalletTask::<T>::create_task(RawOrigin::Signed(caller_create.clone()).into(), title, specification, budget, x.into());
 		let hash_task = PalletTask::<T>::tasks_owned(&caller_create)[0];
 		let _ = PalletTask::<T>::start_task(RawOrigin::Signed(caller_complete.clone()).into(), hash_task.clone());
 
 	}: remove_task(RawOrigin::Signed(caller_complete.clone()), hash_task)
 		/* the code to be benchmarked */
-	
+
 	verify {
 		/* verifying final state */
 		assert_last_event::<T>(Event::<T>::TaskRemoved(caller_complete, hash_task).into());

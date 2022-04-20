@@ -32,15 +32,6 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
 }
 
 benchmarks! {
-	benchmark_name {
-		/* setup initial state */
-	}: {
-		/* the code to be benchmarked */
-	}
-	verify {
-		/* verifying final state */
-	}
-
 	create_vision {
 		/* setup initial state */
 		let caller: T::AccountId = whitelisted_caller();
@@ -48,7 +39,7 @@ benchmarks! {
 		let s in 1 .. u8::MAX.into();
 		let vision = vec![0u8, s as u8];
 
-	}: create_vision(RawOrigin::Signed(caller.clone()), vision.clone()) 
+	}: create_vision(RawOrigin::Signed(caller.clone()), vision.clone())
 	verify {
 		/* verifying final state */
 		assert_last_event::<T>(Event::<T>::VisionCreated (caller, vision ).into());
@@ -64,7 +55,7 @@ benchmarks! {
 		// Create vision before removing
 		let _ = PalletDao::<T>::create_vision(RawOrigin::Signed(caller.clone()).into(), vision.clone());
 
-	}: remove_vision(RawOrigin::Signed(caller.clone()), vision.clone()) 
+	}: remove_vision(RawOrigin::Signed(caller.clone()), vision.clone())
 	verify {
 		/* verifying final state */
 		assert_last_event::<T>(Event::<T>::VisionRemoved (caller, vision ).into());
@@ -80,7 +71,7 @@ benchmarks! {
 		// Create vision before removing
 		let _ = PalletDao::<T>::create_vision(RawOrigin::Signed(caller.clone()).into(), vision.clone());
 
-	}: sign_vision(RawOrigin::Signed(caller.clone()), vision.clone()) 
+	}: sign_vision(RawOrigin::Signed(caller.clone()), vision.clone())
 	verify {
 		/* verifying final state */
 		assert_last_event::<T>(Event::<T>::VisionSigned (caller, vision ).into());
@@ -98,7 +89,7 @@ benchmarks! {
 		let _ = PalletDao::<T>::sign_vision(RawOrigin::Signed(caller.clone()).into(), vision.clone());
 
 
-	}: unsign_vision(RawOrigin::Signed(caller.clone()), vision.clone()) 
+	}: unsign_vision(RawOrigin::Signed(caller.clone()), vision.clone())
 	verify {
 		/* verifying final state */
 		assert_last_event::<T>(Event::<T>::VisionUnsigned (caller, vision ).into());
@@ -114,7 +105,7 @@ benchmarks! {
 
 	}: create_organization(RawOrigin::Signed(caller.clone()), name.clone())
 		/* the code to be benchmarked */
-	
+
 	verify {
 		/* verifying final state */
 		assert_last_event::<T>(Event::<T>::OrganizationCreated( caller, name).into())
@@ -132,7 +123,7 @@ benchmarks! {
 
 	}: dissolve_organization(RawOrigin::Signed(caller.clone()), name.clone())
 		/* the code to be benchmarked */
-	
+
 	verify {
 		/* verifying final state */
 		assert_last_event::<T>(Event::<T>::OrganizationDissolved( caller, name).into())
@@ -144,7 +135,7 @@ benchmarks! {
 
 		let s in 1 .. u8::MAX.into();
 		let name = vec![0u8, s as u8];
-		
+
 		// Create account for member
 		let account: T::AccountId = account("member", s, SEED);
 
@@ -165,7 +156,7 @@ benchmarks! {
 
 		let s in 1 .. u8::MAX.into();
 		let name = vec![0u8, s as u8];
-		
+
 		// Create hash
 		let task_hash_h256 = "task hash";
 		let hash = T::Hashing::hash_of(&task_hash_h256);
@@ -187,16 +178,16 @@ benchmarks! {
 
 		let s in 1 .. u8::MAX.into();
 		let name = vec![0u8, s as u8];
-		
+
 		// Create account for member
 		let u:u32 = 7;
 		let account: T::AccountId = account("member", u, SEED);
-		
+
 		// Create organization before adding members to it
 		let _ = PalletDao::<T>::create_organization(RawOrigin::Signed(caller.clone()).into(), name.clone());
 		let _ = PalletDao::<T>::add_members(RawOrigin::Signed(caller.clone()).into(), name.clone(), account.clone());
 		assert_eq!(PalletDao::<T>::organization(name.clone()).len(), 2);
-		
+
 	}: remove_members(RawOrigin::Signed(caller.clone()), name.clone(), account.clone() )
 		/* the code to be benchmarked */
 	verify {
@@ -211,12 +202,12 @@ benchmarks! {
 
 		let s in 1 .. u8::MAX.into();
 		let name = vec![0u8, s as u8];
-		
+
 		// Create hash
 		let task_hash_h256 = "task hash";
 		let hash = T::Hashing::hash_of(&task_hash_h256);
 
-		// Create organization 
+		// Create organization
 		let _ = PalletDao::<T>::create_organization(RawOrigin::Signed(caller.clone()).into(), name.clone());
 		// Add task to be removed
 		let _ = PalletDao::<T>::add_tasks(RawOrigin::Signed(caller.clone()).into(), name.clone(), hash.clone());
