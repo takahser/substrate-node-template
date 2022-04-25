@@ -349,7 +349,7 @@ fn only_creator_accepts_task(){
 		assert_eq!(Task::tasks_owned(2).len(), 0);
 
 		// Ensure task is accepted by task creator (user 1)
-		assert_noop!(Task::accept_task(Origin::signed(2), hash), Error::<Test>::OnlyInitiatorClosesTask);
+		assert_noop!(Task::accept_task(Origin::signed(2), hash), Error::<Test>::OnlyInitiatorAcceptsTask);
 		assert_ok!(Task::accept_task(Origin::signed(1), hash));
 	});
 }

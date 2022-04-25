@@ -120,7 +120,7 @@ pub mod pallet {
   	pub enum TaskStatus {
     	Created,
     	InProgress,
-		Closed,
+		Accepted,
   	}
 
 	/// Configure the pallet by specifying the parameters and types on which it depends.
@@ -194,7 +194,7 @@ pub mod pallet {
 		/// The given task doesn't exists. Try again
 		TaskNotExist,
 		/// Only the initiator of task has the rights to remove task
-		OnlyInitiatorClosesTask,
+		OnlyInitiatorAcceptsTask,
 		/// Not enough balance to pay
 		NotEnoughBalance,
 		/// Exceed maximum tasks owned
@@ -459,7 +459,7 @@ pub mod pallet {
 
 			// Set current owner to initiator
 			task.current_owner = task.initiator.clone();
-			task.status = TaskStatus::Closed;
+			task.status = TaskStatus::Accepted;
 			let task_initiator = task.initiator.clone();
 
 			// Insert into update task
@@ -477,8 +477,8 @@ pub mod pallet {
 			// Check if task exists
 			let task = Self::tasks(&task_id).ok_or(<Error<T>>::TaskNotExist)?;
 
-			//Check if the owner is the one who created task
-			ensure!(Self::is_task_initiator(task_id, task_initiator)?, <Error<T>>::OnlyInitiatorClosesTask);
+			// Check if the owner is the one who created task
+			ensure!(Self::is_task_initiator(task_id, task_initiator)?, <Error<T>>::OnlyInitiatorAcceptsTask);
 
 			// Remove from ownership
 			<TasksOwned<T>>::try_mutate(&task_initiator, |owned| {
@@ -497,7 +497,7 @@ pub mod pallet {
 			// Reward reputation points to profiles who created/completed a task
 			Self::handle_reputation(task_id)?;
 
-			// remove task once closed
+			// remove task once accepted
 			<Tasks<T>>::remove(task_id);
 
 			// Reduce task count
@@ -514,7 +514,7 @@ pub mod pallet {
 			let mut task = Self::tasks(&task_id).ok_or(<Error<T>>::TaskNotExist)?;
 
 			// Check if the owner is the one who created task
-			ensure!(Self::is_task_initiator(task_id, task_initiator)?, <Error<T>>::OnlyInitiatorClosesTask);
+			ensure!(Self::is_task_initiator(task_id, task_initiator)?, <Error<T>>::OnlyInitiatorAcceptsTask);
 
 			// Remove from ownership of initiator
 			<TasksOwned<T>>::try_mutate(&task_initiator, |owned| {
@@ -542,9 +542,9 @@ pub mod pallet {
 		}
 
 		// Function to check if the current signer is the task_initiator
-		pub fn is_task_initiator(task_id: &T::Hash, task_closer: &T::AccountId) -> Result<bool, DispatchError> {
+		pub fn is_task_initiator(task_id: &T::Hash, task_acceptor: &T::AccountId) -> Result<bool, DispatchError> {
 			match Self::tasks(task_id) {
-				Some(task) => Ok(task.initiator == *task_closer),
+				Some(task) => Ok(task.initiator == *task_acceptor),
 				None => Err(<Error<T>>::TaskNotExist.into())
 			}
 		}
@@ -561,8 +561,8 @@ pub mod pallet {
 			// Check if task exists
 			let task = Self::tasks(&task_id).ok_or(<Error<T>>::TaskNotExist)?;
 
-			// Ensure that reputation is added only when task is in status Closed
-			if task.status == TaskStatus::Closed {
+			// Ensure that reputation is added only when task is in status Accepted
+			if task.status == TaskStatus::Accepted {
 				pallet_profile::Pallet::<T>::add_reputation(&task.initiator).map_err(|_| Error::<T>::ProfileAddReputationFailed)?;
 				pallet_profile::Pallet::<T>::add_reputation(&task.volunteer).map_err(|_| Error::<T>::ProfileAddReputationFailed)?;
 			}
