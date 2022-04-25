@@ -101,6 +101,36 @@ benchmarks! {
 		assert_last_event::<T>(Event::<T>::TaskCreated(caller, hash).into());
 	}
 
+	update_task {
+		/* setup initial state */
+		let caller: T::AccountId = whitelisted_caller();
+
+		// Populate data fields
+		let s in 1 .. u8::MAX.into(); // max bytes for specification
+		let x in 1 .. 2000;
+		let title = vec![0u8, s as u8];
+		let specification = vec![0u8, s as u8];
+		let budget = <T as pallet::Config>::Currency::total_balance(&caller);
+		//let deadline = vec![0u64, s as u8];
+
+		// Create profile before creating a task
+		create_profile::<T>();
+		create_task_info::<T>(1);
+		let _ = PalletTask::<T>::create_task(RawOrigin::Signed(caller.clone()).into(), title.clone(), specification.clone(), budget, x.into());
+		let hash_task = PalletTask::<T>::tasks_owned(&caller)[0];
+
+	}:
+	/* the code to be benchmarked */
+	update_task(RawOrigin::Signed(caller.clone()), hash_task, title, specification, budget, x.into())
+
+	verify {
+		/* verifying final state */
+		let caller: T::AccountId = whitelisted_caller();
+		let hash = PalletTask::<T>::tasks_owned(&caller)[0];
+
+		assert_last_event::<T>(Event::<T>::TaskUpdated(caller, hash).into());
+	}
+
 	start_task {
 		/* setup initial state */
 		let caller_create: T::AccountId = whitelisted_caller();
@@ -175,7 +205,33 @@ benchmarks! {
 
 	verify {
 		/* verifying final state */
-		assert_last_event::<T>(Event::<T>::TaskRemoved(caller_complete, hash_task).into());
+		assert_last_event::<T>(Event::<T>::TaskAccepted(caller_complete, hash_task).into());
+	}
+
+	reject_task {
+		/* setup initial state */
+		let caller_create: T::AccountId = whitelisted_caller();
+		let caller_complete: T::AccountId = whitelisted_caller();
+
+		// Populate data fields
+		let s in 1 .. u8::MAX.into(); // max bytes for specification
+		let x in 1 .. 4000;
+		let title = vec![0u8, s as u8];
+		let specification = vec![0u8, s as u8];
+		let budget = <T as pallet::Config>::Currency::total_balance(&caller_create);
+
+		// Create profile before creating a task
+		create_profile::<T>();
+		let _ = PalletTask::<T>::create_task(RawOrigin::Signed(caller_create.clone()).into(), title, specification, budget, x.into());
+		let hash_task = PalletTask::<T>::tasks_owned(&caller_create)[0];
+		let _ = PalletTask::<T>::start_task(RawOrigin::Signed(caller_complete.clone()).into(), hash_task.clone());
+
+	}: reject_task(RawOrigin::Signed(caller_complete.clone()), hash_task)
+		/* the code to be benchmarked */
+
+	verify {
+		/* verifying final state */
+		assert_last_event::<T>(Event::<T>::TaskRejected(caller_complete, hash_task).into());
 	}
 }
 

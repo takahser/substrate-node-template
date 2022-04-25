@@ -235,7 +235,7 @@ pub mod pallet {
 		}
 
 		/// Function call that updates a created task.  [ origin, specification, budget, deadline]
-		#[pallet::weight(<T as Config>::WeightInfo::create_task(0,0))]
+		#[pallet::weight(<T as Config>::WeightInfo::update_task(0,0))]
 		pub fn update_task(origin: OriginFor<T>, task_id: T::Hash, title: Vec<u8>, specification: Vec<u8>, budget: BalanceOf<T>, deadline: u64) -> DispatchResultWithPostInfo {
 
 			// Check that the extrinsic was signed and get the signer.
@@ -287,7 +287,7 @@ pub mod pallet {
 
 		/// Function to accept a completed task. [origin, task_id]
 		#[transactional]
-		#[pallet::weight(<T as Config>::WeightInfo::remove_task(0,0))]
+		#[pallet::weight(<T as Config>::WeightInfo::accept_task(0,0))]
 		pub fn accept_task(origin: OriginFor<T>, task_id: T::Hash) -> DispatchResult {
 
 			// Check that the extrinsic was signed and get the signer.
@@ -303,7 +303,7 @@ pub mod pallet {
 		}
 
 		/// Function to reject a completed task. [origin, task_id]
-		#[pallet::weight(<T as Config>::WeightInfo::remove_task(0,0))]
+		#[pallet::weight(<T as Config>::WeightInfo::reject_task(0,0))]
 		pub fn reject_task(origin: OriginFor<T>, task_id: T::Hash) -> DispatchResult {
 
 			// Check that the extrinsic was signed and get the signer.
