@@ -166,6 +166,9 @@ pub mod pallet {
 		/// Event for creation of task [AccountID, hash id]
 		TaskCreated(T::AccountId, T::Hash),
 
+		/// Event for updating existing task [AccountID, hash id]
+		TaskUpdated(T::AccountId, T::Hash),
+
 		/// Task assigned to new account [AccountID, hash id]
 		TaskAssigned(T::AccountId, T::Hash),
 
@@ -218,6 +221,25 @@ pub mod pallet {
 
 			// Emit a Task Created Event.
 			Self::deposit_event(Event::TaskCreated(signer, task_id));
+			// Return a successful DispatchResultWithPostInfo
+			Ok(().into())
+		}
+
+		/// Function call that updates a created task.  [ origin, specification, budget, deadline]
+		#[pallet::weight(<T as Config>::WeightInfo::create_task(0,0))]
+		pub fn update_task(origin: OriginFor<T>, task_id: T::Hash, title: Vec<u8>, specification: Vec<u8>, budget: BalanceOf<T>, deadline: u64) -> DispatchResultWithPostInfo {
+
+			// Check that the extrinsic was signed and get the signer.
+			let signer = ensure_signed(origin)?;
+
+			// Update storage.
+			let _task_id = Self::update_created_task(&signer, &task_id, &title, &specification, &budget, deadline)?;
+
+			// TODO: Check if user has balance to update task
+			// T::Currency::reserve(&signer, budget).map_err(|_| "locker can't afford to lock the amount requested")?;
+
+			// Emit a Task Updated Event.
+			Self::deposit_event(Event::TaskUpdated(signer, task_id));
 			// Return a successful DispatchResultWithPostInfo
 			Ok(().into())
 		}
@@ -331,6 +353,31 @@ pub mod pallet {
 			<TaskCount<T>>::put(new_count);
 
 			Ok(task_id)
+		}
+
+		// Task can be updated only after it has been created. Task that is already in progress can't be updated.
+		pub fn update_created_task(from_initiator: &T::AccountId, task_id: &T::Hash, new_title: &[u8], new_specification: &[u8], new_budget: &BalanceOf<T>, new_deadline: u64) -> Result<(), DispatchError> {
+
+			// Check if task exists
+			let mut task = Self::tasks(&task_id).ok_or(<Error<T>>::TaskNotExist)?;
+
+			// Ensure user has a profile before creating a task
+			ensure!(pallet_profile::Pallet::<T>::has_profile(from_initiator).unwrap(), <Error<T>>::NoProfile);
+			
+			// Ensure deadline is in the future
+			let deadline_duration = Duration::from_millis(task.deadline.saturated_into::<u64>());
+			ensure!(T::Time::now() < deadline_duration, Error::<T>::IncorrectDeadlineTimestamp);
+
+			// Init Task Object
+			task.title = new_title.to_vec();
+			task.specification = new_specification.to_vec();
+			task.budget = *new_budget;
+			task.deadline = new_deadline;
+
+			// Insert task into Hashmap
+			<Tasks<T>>::insert(task_id, task);
+
+			Ok(())
 		}
 
 		pub fn assign_task(to: &T::AccountId, task_id: &T::Hash) -> Result<(), DispatchError> {
