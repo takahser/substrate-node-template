@@ -347,9 +347,9 @@ fn only_creator_deletes_task(){
 		assert_eq!(Task::tasks_owned(1).len(), 1);
 		assert_eq!(Task::tasks_owned(2).len(), 0);
 
-		// Ensure task is removed by task creator (user 1)
-		assert_noop!(Task::remove_task(Origin::signed(2), hash), Error::<Test>::OnlyInitiatorClosesTask);
-		assert_ok!(Task::remove_task(Origin::signed(1), hash));
+		// Ensure task is accepted by task creator (user 1)
+		assert_noop!(Task::accept_task(Origin::signed(2), hash), Error::<Test>::OnlyInitiatorClosesTask);
+		assert_ok!(Task::accept_task(Origin::signed(1), hash));
 	});
 }
 
@@ -417,8 +417,8 @@ fn when_task_is_removed_ownership_is_cleared(){
 		assert_eq!(Task::tasks_owned(1).len(), 1);
 		assert_eq!(Task::tasks_owned(2).len(), 0);
 
-		// Ensure task is removed by task creator (user 1)
-		assert_ok!(Task::remove_task(Origin::signed(1), hash));
+		// Ensure task is accepted by task creator (user 1)
+		assert_ok!(Task::accept_task(Origin::signed(1), hash));
 
 		// Ensure ownership of task is cleared
 		assert_eq!(Task::tasks_owned(1).len(), 0);
@@ -444,8 +444,8 @@ fn decrease_task_count_when_removing_task(){
 		let hash = Task::tasks_owned(1)[0];
 		let _task = Task::tasks(hash).expect("should found the task");
 
-		// Removing task decreases count
-		assert_ok!(Task::remove_task(Origin::signed(1), hash));
+		// Accepting task decreases count
+		assert_ok!(Task::accept_task(Origin::signed(1), hash));
 		assert_eq!(Task::task_count(), 0);
 	});
 }
@@ -490,8 +490,8 @@ fn increase_profile_reputation_when_task_completed(){
 		// Ensure task is completed by current current_owner (user 2)
 		assert_ok!(Task::complete_task(Origin::signed(2), hash));
 
-		// Ensure task is removed by task creator (user 1)
-		assert_ok!(Task::remove_task(Origin::signed(1), hash));
+		// Ensure task is accepted by task creator (user 1)
+		assert_ok!(Task::accept_task(Origin::signed(1), hash));
 
 		let profile1 = Profile::profiles(1).expect("should find the profile");
 		let profile2 = Profile::profiles(2).expect("should find the profile");
@@ -520,8 +520,8 @@ fn only_add_reputation_when_task_has_been_completed(){
 		let hash = Task::tasks_owned(1)[0];
 		let _task = Task::tasks(hash).expect("should found the task");
 
-		// Removing task decreases count
-		assert_ok!(Task::remove_task(Origin::signed(1), hash));
+		// Acccepting task decreases count
+		assert_ok!(Task::accept_task(Origin::signed(1), hash));
 		assert_eq!(Task::task_count(), 0);
 
 		// Reputation should remain 0 since the task was removed without being completed

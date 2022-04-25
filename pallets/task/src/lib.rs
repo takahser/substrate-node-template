@@ -56,7 +56,8 @@
 //!
 //! - `complete_task` - Function used to complete a task.
 //!
-//! - `remove_task` - Function used to remove task.
+//! - `accept_task` - Function used to accept completed task. 
+//! 	After the task is accepted, its data is removed from storage.
 //!
 //! ## Related Modules
 //!
@@ -178,8 +179,8 @@ pub mod pallet {
 		/// Task completed by assigned account [AccountID, hash id]
 		TaskCompleted(T::AccountId, T::Hash),
 
-		/// Task removed [AccountID, hash id]
-		TaskRemoved(T::AccountId, T::Hash),
+		/// Task accepted by owner [AccountID, hash id]
+		TaskAccepted(T::AccountId, T::Hash),
 	}
 
 	// Errors inform users that something went wrong.
@@ -281,10 +282,10 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Function to remove task. [origin, task_id]
+		/// Function to accept a completed task. [origin, task_id]
 		#[transactional]
 		#[pallet::weight(<T as Config>::WeightInfo::remove_task(0,0))]
-		pub fn remove_task(origin: OriginFor<T>, task_id: T::Hash) -> DispatchResult {
+		pub fn accept_task(origin: OriginFor<T>, task_id: T::Hash) -> DispatchResult {
 
 			// Check that the extrinsic was signed and get the signer.
 			let signer = ensure_signed(origin)?;
@@ -293,7 +294,7 @@ pub mod pallet {
 			Self::delete_task(&signer, &task_id)?;
 
 			// Emit a Task Removed Event.
-			Self::deposit_event(Event::TaskRemoved(signer, task_id));
+			Self::deposit_event(Event::TaskAccepted(signer, task_id));
 
 			Ok(())
 		}

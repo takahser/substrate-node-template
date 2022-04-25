@@ -152,7 +152,7 @@ benchmarks! {
 		assert_last_event::<T>(Event::<T>::TaskCompleted(caller_complete, hash_task).into());
 	}
 
-	remove_task {
+	accept_task {
 		/* setup initial state */
 		let caller_create: T::AccountId = whitelisted_caller();
 		let caller_complete: T::AccountId = whitelisted_caller();
@@ -170,7 +170,7 @@ benchmarks! {
 		let hash_task = PalletTask::<T>::tasks_owned(&caller_create)[0];
 		let _ = PalletTask::<T>::start_task(RawOrigin::Signed(caller_complete.clone()).into(), hash_task.clone());
 
-	}: remove_task(RawOrigin::Signed(caller_complete.clone()), hash_task)
+	}: accept_task(RawOrigin::Signed(caller_complete.clone()), hash_task)
 		/* the code to be benchmarked */
 
 	verify {
