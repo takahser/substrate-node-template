@@ -49,6 +49,9 @@
 //!
 //! - `create_task` - Function used to create a new task.
 //!
+//! - `update_task` - Function used to update already existing task. 
+//! 	Only the creator of the task has the update rights. 
+//! 
 //! - `start_task` - Function used to start already existing task.
 //!
 //! - `complete_task` - Function used to complete a task.
