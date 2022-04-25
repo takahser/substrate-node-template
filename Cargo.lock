@@ -3512,6 +3512,7 @@ dependencies = [
  "pallet-aura",
  "pallet-balances",
  "pallet-dao",
+ "pallet-did 0.0.25",
  "pallet-grandpa",
  "pallet-profile",
  "pallet-randomness-collective-flip",
@@ -3750,9 +3751,8 @@ dependencies = [
  "log",
  "once_cell",
  "pallet-balances",
- "pallet-did",
+ "pallet-did 0.0.1",
  "pallet-profile",
- "pallet-task",
  "pallet-timestamp",
  "parity-scale-codec",
  "scale-info",
@@ -3772,6 +3772,24 @@ dependencies = [
  "pallet-timestamp",
  "parity-scale-codec",
  "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "pallet-did"
+version = "0.0.25"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "pallet-balances",
+ "pallet-timestamp",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
  "sp-core",
  "sp-io",
  "sp-runtime",

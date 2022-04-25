@@ -199,6 +199,11 @@ default-features = false
 path = '../pallets/dao'
 version = '0.0.25'
 
+[dependencies.pallet-did]
+default-features = false
+path = '../pallets/did'
+version = '0.0.25'
+
 [features]
 default = ['std']
 runtime-benchmarks = [
@@ -211,6 +216,7 @@ runtime-benchmarks = [
     'pallet-profile/runtime-benchmarks',
     'pallet-task/runtime-benchmarks',
     'pallet-dao/runtime-benchmarks',
+    'pallet-did/runtime-benchmarks',
     'pallet-timestamp/runtime-benchmarks',
     'sp-runtime/runtime-benchmarks',
 ]
@@ -225,6 +231,7 @@ std = [
     'pallet-task/std',
     'pallet-profile/std',
     'pallet-dao/std',
+    'pallet-did/std',
     'pallet-balances/std',
     'pallet-grandpa/std',
     'pallet-randomness-collective-flip/std',
