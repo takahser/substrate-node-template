@@ -1,3 +1,4 @@
+use crate::TaskStatus;
 use crate::{mock::*, Error};
 use frame_support::{assert_noop, assert_ok, traits::{UnixTime, Hooks}};
 use pallet_balances::Error as BalancesError;
@@ -314,7 +315,7 @@ fn completing_tasks_assigns_new_current_owner(){
 }
 
 #[test]
-fn only_creator_deletes_task(){
+fn only_creator_accepts_task(){
 	new_test_ext().execute_with( || {
 
 		// Profile is necessary for task creation
@@ -384,7 +385,7 @@ fn only_started_task_can_be_completed(){
 }
 
 #[test]
-fn when_task_is_removed_ownership_is_cleared(){
+fn when_task_is_accepted_ownership_is_cleared(){
 	new_test_ext().execute_with( || {
 
 		// Profile is necessary for task creation
@@ -428,7 +429,7 @@ fn when_task_is_removed_ownership_is_cleared(){
 
 
 #[test]
-fn decrease_task_count_when_removing_task(){
+fn decrease_task_count_when_accepting_task(){
 	new_test_ext().execute_with( || {
 
 		// Profile is necessary for task creation
@@ -447,6 +448,45 @@ fn decrease_task_count_when_removing_task(){
 		// Accepting task decreases count
 		assert_ok!(Task::accept_task(Origin::signed(1), hash));
 		assert_eq!(Task::task_count(), 0);
+	});
+}
+
+#[test]
+fn task_can_be_rejected_by_creator(){
+	new_test_ext().execute_with( || {
+
+		// Profile is necessary for task creation
+		assert_ok!(Profile::create_profile(Origin::signed(1), USERNAME.to_vec(), Vec::new()));
+
+		let mut vec = Vec::new();
+		vec.push(2);
+
+		// Ensure new task can be created with [signer, specification, budget]
+		assert_ok!(Task::create_task(Origin::signed(1), TITLE.to_vec(), vec, 8, get_deadline()));
+
+		// Get hash of task owned
+		let hash = Task::tasks_owned(1)[0];
+		let _task = Task::tasks(hash).expect("should found the task");
+
+		// Ensure task is started by new current_owner (user 2)
+		assert_ok!(Task::start_task(Origin::signed(2), hash));
+
+		// Ensure when task is started user1 has 0 tasks, and user2 has 1
+		assert_eq!(Task::tasks_owned(1).len(), 0);
+		assert_eq!(Task::tasks_owned(2).len(), 1);
+
+		// Ensure task is completed by current current_owner (user 2)
+		assert_ok!(Task::complete_task(Origin::signed(2), hash));
+
+		// Task is rejected by creator
+		assert_ok!(Task::reject_task(Origin::signed(1), hash));
+		
+		// Assert that the status is back in progress and, owner is the volunteer
+		let hash = Task::tasks_owned(2)[0];
+		let task = Task::tasks(hash).expect("should found the task");
+		assert_eq!(task.current_owner, 2);
+		assert_eq!(task.status, TaskStatus::InProgress);
+
 	});
 }
 

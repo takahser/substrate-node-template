@@ -181,6 +181,9 @@ pub mod pallet {
 
 		/// Task accepted by owner [AccountID, hash id]
 		TaskAccepted(T::AccountId, T::Hash),
+
+		/// Task rejected by owner [AccountID, hash id]
+		TaskRejected(T::AccountId, T::Hash),
 	}
 
 	// Errors inform users that something went wrong.
@@ -295,6 +298,22 @@ pub mod pallet {
 
 			// Emit a Task Removed Event.
 			Self::deposit_event(Event::TaskAccepted(signer, task_id));
+
+			Ok(())
+		}
+
+		/// Function to reject a completed task. [origin, task_id]
+		#[pallet::weight(<T as Config>::WeightInfo::remove_task(0,0))]
+		pub fn reject_task(origin: OriginFor<T>, task_id: T::Hash) -> DispatchResult {
+
+			// Check that the extrinsic was signed and get the signer.
+			let signer = ensure_signed(origin)?;
+
+			// Reject task and update storage.
+			Self::reject_completed_task(&signer, &task_id)?;
+
+			// Emit a Task Rejected Event.
+			Self::deposit_event(Event::TaskRejected(signer, task_id));
 
 			Ok(())
 		}
@@ -484,6 +503,40 @@ pub mod pallet {
 			// Reduce task count
 			let new_count = Self::task_count().saturating_sub(1);
 			<TaskCount<T>>::put(new_count);
+
+			Ok(())
+		}
+
+		// Task can be rejected by the creator, which places the task back into progress.
+		pub fn reject_completed_task(task_initiator: &T::AccountId, task_id: &T::Hash) -> Result<(), DispatchError> {
+			
+			// Check if task exists
+			let mut task = Self::tasks(&task_id).ok_or(<Error<T>>::TaskNotExist)?;
+
+			// Check if the owner is the one who created task
+			ensure!(Self::is_task_initiator(task_id, task_initiator)?, <Error<T>>::OnlyInitiatorClosesTask);
+
+			// Remove from ownership of initiator
+			<TasksOwned<T>>::try_mutate(&task_initiator, |owned| {
+				if let Some(index) = owned.iter().position(|&id| id == *task_id) {
+					owned.swap_remove(index);
+					return Ok(());
+				}
+				Err(())
+			}).map_err(|_| <Error<T>>::TaskNotExist)?;
+
+			// Set current owner back to volunteer
+			task.current_owner = task.volunteer.clone();
+			task.status = TaskStatus::InProgress;
+			let task_volunteer = task.volunteer.clone();
+
+			// Insert task
+			<Tasks<T>>::insert(task_id, task);
+
+			// Assign task to new owner (original volunteer)
+			<TasksOwned<T>>::try_mutate(task_volunteer, |vec| {
+				vec.try_push(*task_id)
+			}).map_err(|_| <Error<T>>::ExceedMaxTasksOwned)?;
 
 			Ok(())
 		}
