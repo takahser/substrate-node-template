@@ -421,7 +421,7 @@ pub mod pallet {
 
 	// *** Helper functions *** //
 	impl<T:Config> Pallet<T> {
-		pub fn new_org(from_initiator: &T::AccountId, org_name: &[u8]) -> Result<(), Error<T>> {
+		pub fn new_org(from_initiator: &T::AccountId, org_name: &[u8]) -> Result<(), DispatchError> {
 
 			let mut org = <Pallet<T>>::organization(org_name);
 			org.push(from_initiator.clone());
@@ -436,7 +436,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		pub fn remove_org(from_initiator: &T::AccountId, org_name: &[u8]) -> Result<(), Error<T>> {
+		pub fn remove_org(from_initiator: &T::AccountId, org_name: &[u8]) -> Result<(), DispatchError> {
 
 			// check if its DAO original creator
 			Self::is_dao_founder(from_initiator, org_name)?;
@@ -451,7 +451,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		pub fn add_member_to_organization(from_initiator: &T::AccountId, org_name: &[u8], account: &T::AccountId ) -> Result<(), Error<T>> {
+		pub fn add_member_to_organization(from_initiator: &T::AccountId, org_name: &[u8], account: &T::AccountId ) -> Result<(), DispatchError> {
 			// Check if organization exists
 			let mut members = Self::organization(org_name);
 			ensure!(!members.is_empty() , Error::<T>::InvalidOrganization);
@@ -474,7 +474,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		pub fn add_task_to_organization(from_initiator: &T::AccountId, org_name: &[u8], task: &T::Hash ) -> Result<(), Error<T>> {
+		pub fn add_task_to_organization(from_initiator: &T::AccountId, org_name: &[u8], task: &T::Hash ) -> Result<(), DispatchError> {
 			// Check if organization exists
 			let members = Self::organization(org_name);
 			ensure!(!members.is_empty() , Error::<T>::InvalidOrganization);
@@ -494,7 +494,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		pub fn remove_member_from_organization(from_initiator: &T::AccountId, org_name: &[u8], account: &T::AccountId ) -> Result<(), Error<T>> {
+		pub fn remove_member_from_organization(from_initiator: &T::AccountId, org_name: &[u8], account: &T::AccountId ) -> Result<(), DispatchError> {
 			// Check if organization exists
 			let org = <Pallet<T>>::organization(org_name);
 			ensure!(!org.is_empty() , Error::<T>::InvalidOrganization);
@@ -519,7 +519,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		pub fn remove_task_from_organization(from_initiator: &T::AccountId, org_name: &[u8], task: &T::Hash ) -> Result<(), Error<T>> {
+		pub fn remove_task_from_organization(from_initiator: &T::AccountId, org_name: &[u8], task: &T::Hash ) -> Result<(), DispatchError> {
 			// Check if organization exists
 			let org = <Pallet<T>>::organization(org_name);
 			ensure!(!org.is_empty() , Error::<T>::InvalidOrganization);
@@ -538,7 +538,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		pub fn member_signs_vision(from_initiator: &T::AccountId, vision_document: &[u8]) -> Result<(), Error<T>> {
+		pub fn member_signs_vision(from_initiator: &T::AccountId, vision_document: &[u8]) -> Result<(), DispatchError> {
 
 			// Verify that the specified vision has been created.
             ensure!(Vision::<T>::contains_key(vision_document), Error::<T>::NoSuchVision);
@@ -558,7 +558,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		pub fn member_unsigns_vision(from_initiator: &T::AccountId, vision_document: &[u8]) -> Result<(), Error<T>> {
+		pub fn member_unsigns_vision(from_initiator: &T::AccountId, vision_document: &[u8]) -> Result<(), DispatchError> {
 
 			// Verify that the specified vision has been created.
             ensure!(Vision::<T>::contains_key(vision_document), Error::<T>::NoSuchVision);
@@ -580,11 +580,12 @@ pub mod pallet {
 
 
 
-		pub fn is_dao_founder(from_initiator: &T::AccountId, org_name: &[u8]) -> Result<bool, Error<T>> {
+		pub fn is_dao_founder(from_initiator: &T::AccountId, org_name: &[u8]) -> Result<bool,
+		DispatchError> {
 			let first_account = Self::organization(org_name);
 			if first_account[0] == *from_initiator {
 				Ok(true)
-			} else { Err(Error::<T>::NotOrganizationCreator) }
+			} else { Err(Error::<T>::NotOrganizationCreator.into()) }
 		}
 	}
 }

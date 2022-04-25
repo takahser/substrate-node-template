@@ -1,7 +1,8 @@
 use crate as pallet_dao;
 use frame_support::parameter_types;
 use frame_system as system;
-use sp_core::H256;
+use once_cell::sync::Lazy;
+use sp_core::{sr25519, H256};
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
@@ -19,15 +20,22 @@ frame_support::construct_runtime!(
 	{
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
 		Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
+		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
+		Did: pallet_did::{Pallet, Call, Storage, Event<T>},
 		Dao: pallet_dao::{Pallet, Call, Storage, Event<T>},
 		Profile: pallet_profile::{Pallet, Call, Storage, Event<T>},
 	}
 );
-
+pub type Moment = u64;
 parameter_types! {
 	pub const BlockHashCount: u64 = 250;
 	pub const SS58Prefix: u8 = 42;
 }
+
+pub static ALICE : Lazy<sr25519::Public> = Lazy::new(||{sr25519::Public::from_raw([1u8; 32])});
+pub static BOB : Lazy<sr25519::Public> = Lazy::new(||{sr25519::Public::from_raw([2u8; 32])});
+pub static EVE : Lazy<sr25519::Public> = Lazy::new(||{sr25519::Public::from_raw([3u8; 32])});
+pub static JOHN : Lazy<sr25519::Public> = Lazy::new(||{sr25519::Public::from_raw([4u8; 32])});
 
 impl system::Config for Test {
 	type BaseCallFilter = frame_support::traits::Everything;
@@ -40,7 +48,7 @@ impl system::Config for Test {
 	type BlockNumber = u64;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
-	type AccountId = u64;
+	type AccountId = sr25519::Public;
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
 	type Event = Event;
@@ -53,6 +61,21 @@ impl system::Config for Test {
 	type SystemWeightInfo = ();
 	type SS58Prefix = SS58Prefix;
 	type OnSetCode = ();
+}
+
+impl pallet_timestamp::Config for Test {
+	type Moment =  Moment;
+	type OnTimestampSet = ();
+	type MinimumPeriod = ();
+	type WeightInfo = ();
+}
+
+impl pallet_did::Config for Test {
+	type Event = Event;
+	type Public = sr25519::Public;
+	type Signature = sr25519::Signature;
+	type Time = Timestamp;
+	type WeightInfo = ();
 }
 
 impl pallet_dao::Config for Test {

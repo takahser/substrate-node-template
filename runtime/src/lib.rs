@@ -298,7 +298,13 @@ impl pallet_profile::Config for Runtime {
 	type WeightInfo = pallet_profile::weights::SubstrateWeight<Runtime>;
 }
 
-
+impl pallet_did::Config for Runtime {
+	type Event = Event;
+	type Public = <Signature as Verify>::Signer;
+	type Signature = Signature;
+	type Time = Timestamp;
+	type WeightInfo = pallet_did::weights::SubstrateWeight<Runtime>;
+}
 
 // Create the runtime by composing the FRAME pallets that were previously configured.
 construct_runtime!(
@@ -318,6 +324,7 @@ construct_runtime!(
 		Task: pallet_task::{Pallet, Call, Storage, Event<T>},
 		Profile: pallet_profile::{Pallet, Call, Storage, Event<T>},
 		Dao: pallet_dao::{Pallet, Call, Storage, Event<T>},
+		Did: pallet_did::{Pallet, Call, Storage, Event<T>},
 	}
 );
 
@@ -499,6 +506,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_profile, Profile);
 			list_benchmark!(list, extra, pallet_task, Task);
 			list_benchmark!(list, extra, pallet_dao, Dao);
+			list_benchmark!(list, extra, pallet_did, Did);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 
@@ -539,6 +547,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_profile, Profile);
 			add_benchmark!(params, batches, pallet_task, Task);
 			add_benchmark!(params, batches, pallet_dao, Dao);
+			add_benchmark!(params, batches, pallet_did, Did);
 
 
 			Ok(batches)
