@@ -195,6 +195,30 @@ fn task_can_be_updated_after_it_is_created(){
 }
 
 #[test]
+fn task_can_be_updated_only_by_one_who_created_it(){
+	new_test_ext().execute_with( || {
+
+		// Profile is necessary for task creation
+		assert_ok!(Profile::create_profile(Origin::signed(10), USERNAME.to_vec(), Vec::new()));
+
+		let mut vec1 = Vec::new();
+		vec1.push(2);
+
+		let vec2 = Vec::new();
+		vec1.push(3);
+
+		assert_ok!(Task::create_task(Origin::signed(10), TITLE.to_vec(), vec1, 1, get_deadline()));
+		
+		// Get task through the hash
+		let hash = Task::tasks_owned(10)[0];
+		
+		// Throw error when someone other than creator tries to update task
+		assert_noop!(Task::update_task(Origin::signed(7), hash, TITLE.to_vec(), vec2, 7, get_deadline()), Error::<Test>::OnlyInitiatorUpdatesTask);
+	
+	});
+}
+
+#[test]
 fn start_tasks_assigns_new_current_owner(){
 	new_test_ext().execute_with( || {
 

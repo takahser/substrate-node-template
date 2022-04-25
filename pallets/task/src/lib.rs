@@ -198,6 +198,8 @@ pub mod pallet {
 		NoProfile,
 		/// Provided deadline value can not be accepted.
 		IncorrectDeadlineTimestamp,
+		/// Only Task creator can update the task.
+		OnlyInitiatorUpdatesTask,
         ProfileAddReputationFailed, // TODO: remove this when pallet_profile returns DispatchError
 	}
 
@@ -360,6 +362,9 @@ pub mod pallet {
 
 			// Check if task exists
 			let mut task = Self::tasks(&task_id).ok_or(<Error<T>>::TaskNotExist)?;
+
+			// Check if the owner is the one who created task
+			ensure!(Self::is_task_initiator(task_id, from_initiator)?, <Error<T>>::OnlyInitiatorUpdatesTask);
 
 			// Ensure user has a profile before creating a task
 			ensure!(pallet_profile::Pallet::<T>::has_profile(from_initiator).unwrap(), <Error<T>>::NoProfile);
