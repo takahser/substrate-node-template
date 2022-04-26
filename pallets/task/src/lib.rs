@@ -120,6 +120,7 @@ pub mod pallet {
   	pub enum TaskStatus {
     	Created,
     	InProgress,
+		Completed,
 		Accepted,
   	}
 
@@ -201,6 +202,10 @@ pub mod pallet {
 		ExceedMaxTasksOwned,
 		/// You are not allowed to complete this task
 		NoPermissionToComplete,
+		/// You are not allowed to update this task. Task is already in progress.
+		NoPermissionToUpdate,
+		// Only completed tasks can be rejected.
+		OnlyCompletedTaskAreRejected,
 		/// This account has no Profile yet.
 		NoProfile,
 		/// Provided deadline value can not be accepted.
@@ -391,6 +396,9 @@ pub mod pallet {
 
 			// Ensure user has a profile before creating a task
 			ensure!(pallet_profile::Pallet::<T>::has_profile(from_initiator).unwrap(), <Error<T>>::NoProfile);
+
+			// Check if task is in created status. Tasks can be updated only before work has been started.
+			ensure!(TaskStatus::Created == task.status, <Error<T>>::NoPermissionToUpdate);
 			
 			// Ensure deadline is in the future
 			let deadline_duration = Duration::from_millis(task.deadline.saturated_into::<u64>());
@@ -459,7 +467,7 @@ pub mod pallet {
 
 			// Set current owner to initiator
 			task.current_owner = task.initiator.clone();
-			task.status = TaskStatus::Accepted;
+			task.status = TaskStatus::Completed;
 			let task_initiator = task.initiator.clone();
 
 			// Insert into update task
@@ -475,7 +483,7 @@ pub mod pallet {
 
 		pub fn delete_task(task_initiator: &T::AccountId, task_id: &T::Hash) -> Result<(), DispatchError> {
 			// Check if task exists
-			let task = Self::tasks(&task_id).ok_or(<Error<T>>::TaskNotExist)?;
+			let mut task = Self::tasks(&task_id).ok_or(<Error<T>>::TaskNotExist)?;
 
 			// Check if the owner is the one who created task
 			ensure!(Self::is_task_initiator(task_id, task_initiator)?, <Error<T>>::OnlyInitiatorAcceptsTask);
@@ -492,7 +500,11 @@ pub mod pallet {
 			// Transfer balance to volunteer
 			let volunteer = task.volunteer.clone();
 			let budget = task.budget;
+			task.status = TaskStatus::Accepted;
 			Self::transfer_balance(task_initiator, &volunteer, budget)?;
+
+			// Update task state
+			<Tasks<T>>::insert(task_id, task);
 
 			// Reward reputation points to profiles who created/completed a task
 			Self::handle_reputation(task_id)?;
@@ -515,6 +527,9 @@ pub mod pallet {
 
 			// Check if the owner is the one who created task
 			ensure!(Self::is_task_initiator(task_id, task_initiator)?, <Error<T>>::OnlyInitiatorAcceptsTask);
+
+			// Check if task is Completed before rejecting it
+			ensure!(TaskStatus::Completed == task.status, <Error<T>>::OnlyCompletedTaskAreRejected);
 
 			// Remove from ownership of initiator
 			<TasksOwned<T>>::try_mutate(&task_initiator, |owned| {

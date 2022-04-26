@@ -111,7 +111,6 @@ benchmarks! {
 		let title = vec![0u8, s as u8];
 		let specification = vec![0u8, s as u8];
 		let budget = <T as pallet::Config>::Currency::total_balance(&caller);
-		//let deadline = vec![0u64, s as u8];
 
 		// Create profile before creating a task
 		create_profile::<T>();

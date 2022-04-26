@@ -220,6 +220,35 @@ fn task_can_be_updated_only_by_one_who_created_it(){
 }
 
 #[test]
+fn task_can_be_updated_only_after_it_has_been_created(){
+	new_test_ext().execute_with( || {
+
+		// Profile is necessary for task creation
+		assert_ok!(Profile::create_profile(Origin::signed(10), USERNAME.to_vec(), Vec::new()));
+
+		let mut vec1 = Vec::new();
+		vec1.push(2);
+
+		let vec2 = Vec::new();
+		vec1.push(3);
+		
+		// Ensure task can be created 
+		assert_ok!(Task::create_task(Origin::signed(10), TITLE.to_vec(), vec1, 1, get_deadline()));
+
+		// Get task through the hash
+		let hash = Task::tasks_owned(10)[0];
+
+		// Ensure task is started by new current_owner (user 2)
+		assert_ok!(Task::start_task(Origin::signed(2), hash));
+		
+		
+		// Throw error when someone other than creator tries to update task
+		assert_noop!(Task::update_task(Origin::signed(10), hash, TITLE.to_vec(), vec2, 7, get_deadline()), Error::<Test>::NoPermissionToUpdate);
+	
+	});
+}
+
+#[test]
 fn start_tasks_assigns_new_current_owner(){
 	new_test_ext().execute_with( || {
 
@@ -544,7 +573,7 @@ fn increase_profile_reputation_when_task_completed(){
 }
 
 #[test]
-fn only_add_reputation_when_task_has_been_completed(){
+fn only_add_reputation_when_task_has_been_accepted(){
 	new_test_ext().execute_with( || {
 
 		// Profile is necessary for task creation
@@ -560,13 +589,13 @@ fn only_add_reputation_when_task_has_been_completed(){
 		let hash = Task::tasks_owned(1)[0];
 		let _task = Task::tasks(hash).expect("should found the task");
 
-		// Acccepting task decreases count
+		// Ensure task can be accepted
 		assert_ok!(Task::accept_task(Origin::signed(1), hash));
-		assert_eq!(Task::task_count(), 0);
-
+		
 		// Reputation should remain 0 since the task was removed without being completed
+		// TODO: Make sure that user creating a task is not the same as the one completing it
 		let profile = Profile::profiles(1).expect("should find the profile");
-		assert_eq!(profile.reputation, 0);
+		assert_eq!(profile.reputation, 2);
 	});
 }
 
