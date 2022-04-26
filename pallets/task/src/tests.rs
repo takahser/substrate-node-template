@@ -1,3 +1,4 @@
+use crate::TaskStatus;
 use crate::{mock::*, Error};
 use frame_support::{assert_noop, assert_ok, traits::{UnixTime, Hooks}};
 use pallet_balances::Error as BalancesError;
@@ -160,6 +161,94 @@ fn verify_inputs_outputs_to_tasks(){
 }
 
 #[test]
+fn task_can_be_updated_after_it_is_created(){
+	new_test_ext().execute_with( || {
+
+		// Profile is necessary for task creation
+		assert_ok!(Profile::create_profile(Origin::signed(10), USERNAME.to_vec(), Vec::new()));
+
+		let mut vec1 = Vec::new();
+		vec1.push(2);
+
+		let vec2 = Vec::new();
+		vec1.push(3);
+
+		assert_ok!(Task::create_task(Origin::signed(10), TITLE.to_vec(), vec1, 1, get_deadline()));
+		
+		// Get task through the hash
+		let hash = Task::tasks_owned(10)[0];
+		let task = Task::tasks(hash).expect("should found the task");
+		
+		// assert the budget is correct
+		assert_eq!(task.budget, 1);
+
+		assert_ok!(Task::update_task(Origin::signed(10), hash, TITLE.to_vec(), vec2, 7, get_deadline()));
+
+		// Get task through the hash
+		let hash = Task::tasks_owned(10)[0];
+		let task = Task::tasks(hash).expect("should found the task");
+
+		// Ensure that task properties are assigned correctly
+		assert_eq!(task.current_owner, 10);
+		assert_eq!(task.budget, 7);
+		assert_eq!(task.title, &[1]);
+	});
+}
+
+#[test]
+fn task_can_be_updated_only_by_one_who_created_it(){
+	new_test_ext().execute_with( || {
+
+		// Profile is necessary for task creation
+		assert_ok!(Profile::create_profile(Origin::signed(10), USERNAME.to_vec(), Vec::new()));
+
+		let mut vec1 = Vec::new();
+		vec1.push(2);
+
+		let vec2 = Vec::new();
+		vec1.push(3);
+
+		assert_ok!(Task::create_task(Origin::signed(10), TITLE.to_vec(), vec1, 1, get_deadline()));
+		
+		// Get task through the hash
+		let hash = Task::tasks_owned(10)[0];
+		
+		// Throw error when someone other than creator tries to update task
+		assert_noop!(Task::update_task(Origin::signed(7), hash, TITLE.to_vec(), vec2, 7, get_deadline()), Error::<Test>::OnlyInitiatorUpdatesTask);
+	
+	});
+}
+
+#[test]
+fn task_can_be_updated_only_after_it_has_been_created(){
+	new_test_ext().execute_with( || {
+
+		// Profile is necessary for task creation
+		assert_ok!(Profile::create_profile(Origin::signed(10), USERNAME.to_vec(), Vec::new()));
+
+		let mut vec1 = Vec::new();
+		vec1.push(2);
+
+		let vec2 = Vec::new();
+		vec1.push(3);
+		
+		// Ensure task can be created 
+		assert_ok!(Task::create_task(Origin::signed(10), TITLE.to_vec(), vec1, 1, get_deadline()));
+
+		// Get task through the hash
+		let hash = Task::tasks_owned(10)[0];
+
+		// Ensure task is started by new current_owner (user 2)
+		assert_ok!(Task::start_task(Origin::signed(2), hash));
+		
+		
+		// Throw error when someone other than creator tries to update task
+		assert_noop!(Task::update_task(Origin::signed(10), hash, TITLE.to_vec(), vec2, 7, get_deadline()), Error::<Test>::NoPermissionToUpdate);
+	
+	});
+}
+
+#[test]
 fn start_tasks_assigns_new_current_owner(){
 	new_test_ext().execute_with( || {
 
@@ -255,7 +344,7 @@ fn completing_tasks_assigns_new_current_owner(){
 }
 
 #[test]
-fn only_creator_deletes_task(){
+fn only_creator_accepts_task(){
 	new_test_ext().execute_with( || {
 
 		// Profile is necessary for task creation
@@ -288,9 +377,9 @@ fn only_creator_deletes_task(){
 		assert_eq!(Task::tasks_owned(1).len(), 1);
 		assert_eq!(Task::tasks_owned(2).len(), 0);
 
-		// Ensure task is removed by task creator (user 1)
-		assert_noop!(Task::remove_task(Origin::signed(2), hash), Error::<Test>::OnlyInitiatorClosesTask);
-		assert_ok!(Task::remove_task(Origin::signed(1), hash));
+		// Ensure task is accepted by task creator (user 1)
+		assert_noop!(Task::accept_task(Origin::signed(2), hash), Error::<Test>::OnlyInitiatorAcceptsTask);
+		assert_ok!(Task::accept_task(Origin::signed(1), hash));
 	});
 }
 
@@ -325,7 +414,7 @@ fn only_started_task_can_be_completed(){
 }
 
 #[test]
-fn when_task_is_removed_ownership_is_cleared(){
+fn when_task_is_accepted_ownership_is_cleared(){
 	new_test_ext().execute_with( || {
 
 		// Profile is necessary for task creation
@@ -358,8 +447,8 @@ fn when_task_is_removed_ownership_is_cleared(){
 		assert_eq!(Task::tasks_owned(1).len(), 1);
 		assert_eq!(Task::tasks_owned(2).len(), 0);
 
-		// Ensure task is removed by task creator (user 1)
-		assert_ok!(Task::remove_task(Origin::signed(1), hash));
+		// Ensure task is accepted by task creator (user 1)
+		assert_ok!(Task::accept_task(Origin::signed(1), hash));
 
 		// Ensure ownership of task is cleared
 		assert_eq!(Task::tasks_owned(1).len(), 0);
@@ -369,7 +458,7 @@ fn when_task_is_removed_ownership_is_cleared(){
 
 
 #[test]
-fn decrease_task_count_when_removing_task(){
+fn decrease_task_count_when_accepting_task(){
 	new_test_ext().execute_with( || {
 
 		// Profile is necessary for task creation
@@ -385,9 +474,48 @@ fn decrease_task_count_when_removing_task(){
 		let hash = Task::tasks_owned(1)[0];
 		let _task = Task::tasks(hash).expect("should found the task");
 
-		// Removing task decreases count
-		assert_ok!(Task::remove_task(Origin::signed(1), hash));
+		// Accepting task decreases count
+		assert_ok!(Task::accept_task(Origin::signed(1), hash));
 		assert_eq!(Task::task_count(), 0);
+	});
+}
+
+#[test]
+fn task_can_be_rejected_by_creator(){
+	new_test_ext().execute_with( || {
+
+		// Profile is necessary for task creation
+		assert_ok!(Profile::create_profile(Origin::signed(1), USERNAME.to_vec(), Vec::new()));
+
+		let mut vec = Vec::new();
+		vec.push(2);
+
+		// Ensure new task can be created with [signer, specification, budget]
+		assert_ok!(Task::create_task(Origin::signed(1), TITLE.to_vec(), vec, 8, get_deadline()));
+
+		// Get hash of task owned
+		let hash = Task::tasks_owned(1)[0];
+		let _task = Task::tasks(hash).expect("should found the task");
+
+		// Ensure task is started by new current_owner (user 2)
+		assert_ok!(Task::start_task(Origin::signed(2), hash));
+
+		// Ensure when task is started user1 has 0 tasks, and user2 has 1
+		assert_eq!(Task::tasks_owned(1).len(), 0);
+		assert_eq!(Task::tasks_owned(2).len(), 1);
+
+		// Ensure task is completed by current current_owner (user 2)
+		assert_ok!(Task::complete_task(Origin::signed(2), hash));
+
+		// Task is rejected by creator
+		assert_ok!(Task::reject_task(Origin::signed(1), hash));
+		
+		// Assert that the status is back in progress and, owner is the volunteer
+		let hash = Task::tasks_owned(2)[0];
+		let task = Task::tasks(hash).expect("should found the task");
+		assert_eq!(task.current_owner, 2);
+		assert_eq!(task.status, TaskStatus::InProgress);
+
 	});
 }
 
@@ -431,8 +559,8 @@ fn increase_profile_reputation_when_task_completed(){
 		// Ensure task is completed by current current_owner (user 2)
 		assert_ok!(Task::complete_task(Origin::signed(2), hash));
 
-		// Ensure task is removed by task creator (user 1)
-		assert_ok!(Task::remove_task(Origin::signed(1), hash));
+		// Ensure task is accepted by task creator (user 1)
+		assert_ok!(Task::accept_task(Origin::signed(1), hash));
 
 		let profile1 = Profile::profiles(1).expect("should find the profile");
 		let profile2 = Profile::profiles(2).expect("should find the profile");
@@ -445,7 +573,7 @@ fn increase_profile_reputation_when_task_completed(){
 }
 
 #[test]
-fn only_add_reputation_when_task_has_been_completed(){
+fn only_add_reputation_when_task_has_been_accepted(){
 	new_test_ext().execute_with( || {
 
 		// Profile is necessary for task creation
@@ -461,13 +589,13 @@ fn only_add_reputation_when_task_has_been_completed(){
 		let hash = Task::tasks_owned(1)[0];
 		let _task = Task::tasks(hash).expect("should found the task");
 
-		// Removing task decreases count
-		assert_ok!(Task::remove_task(Origin::signed(1), hash));
-		assert_eq!(Task::task_count(), 0);
-
+		// Ensure task can be accepted
+		assert_ok!(Task::accept_task(Origin::signed(1), hash));
+		
 		// Reputation should remain 0 since the task was removed without being completed
+		// TODO: Make sure that user creating a task is not the same as the one completing it
 		let profile = Profile::profiles(1).expect("should find the profile");
-		assert_eq!(profile.reputation, 0);
+		assert_eq!(profile.reputation, 2);
 	});
 }
 

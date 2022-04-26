@@ -49,11 +49,15 @@
 //!
 //! - `create_task` - Function used to create a new task.
 //!
+//! - `update_task` - Function used to update already existing task. 
+//! 	Only the creator of the task has the update rights. 
+//! 
 //! - `start_task` - Function used to start already existing task.
 //!
 //! - `complete_task` - Function used to complete a task.
 //!
-//! - `remove_task` - Function used to remove task.
+//! - `accept_task` - Function used to accept completed task. 
+//! 	After the task is accepted, its data is removed from storage.
 //!
 //! ## Related Modules
 //!
@@ -116,7 +120,8 @@ pub mod pallet {
   	pub enum TaskStatus {
     	Created,
     	InProgress,
-		Closed,
+		Completed,
+		Accepted,
   	}
 
 	/// Configure the pallet by specifying the parameters and types on which it depends.
@@ -166,14 +171,20 @@ pub mod pallet {
 		/// Event for creation of task [AccountID, hash id]
 		TaskCreated(T::AccountId, T::Hash),
 
+		/// Event for updating existing task [AccountID, hash id]
+		TaskUpdated(T::AccountId, T::Hash),
+
 		/// Task assigned to new account [AccountID, hash id]
 		TaskAssigned(T::AccountId, T::Hash),
 
 		/// Task completed by assigned account [AccountID, hash id]
 		TaskCompleted(T::AccountId, T::Hash),
 
-		/// Task removed [AccountID, hash id]
-		TaskRemoved(T::AccountId, T::Hash),
+		/// Task accepted by owner [AccountID, hash id]
+		TaskAccepted(T::AccountId, T::Hash),
+
+		/// Task rejected by owner [AccountID, hash id]
+		TaskRejected(T::AccountId, T::Hash),
 	}
 
 	// Errors inform users that something went wrong.
@@ -184,17 +195,23 @@ pub mod pallet {
 		/// The given task doesn't exists. Try again
 		TaskNotExist,
 		/// Only the initiator of task has the rights to remove task
-		OnlyInitiatorClosesTask,
+		OnlyInitiatorAcceptsTask,
 		/// Not enough balance to pay
 		NotEnoughBalance,
 		/// Exceed maximum tasks owned
 		ExceedMaxTasksOwned,
 		/// You are not allowed to complete this task
 		NoPermissionToComplete,
+		/// You are not allowed to update this task. Task is already in progress.
+		NoPermissionToUpdate,
+		// Only completed tasks can be rejected.
+		OnlyCompletedTaskAreRejected,
 		/// This account has no Profile yet.
 		NoProfile,
 		/// Provided deadline value can not be accepted.
 		IncorrectDeadlineTimestamp,
+		/// Only Task creator can update the task.
+		OnlyInitiatorUpdatesTask,
         ProfileAddReputationFailed, // TODO: remove this when pallet_profile returns DispatchError
 	}
 
@@ -218,6 +235,25 @@ pub mod pallet {
 
 			// Emit a Task Created Event.
 			Self::deposit_event(Event::TaskCreated(signer, task_id));
+			// Return a successful DispatchResultWithPostInfo
+			Ok(().into())
+		}
+
+		/// Function call that updates a created task.  [ origin, specification, budget, deadline]
+		#[pallet::weight(<T as Config>::WeightInfo::update_task(0,0))]
+		pub fn update_task(origin: OriginFor<T>, task_id: T::Hash, title: Vec<u8>, specification: Vec<u8>, budget: BalanceOf<T>, deadline: u64) -> DispatchResultWithPostInfo {
+
+			// Check that the extrinsic was signed and get the signer.
+			let signer = ensure_signed(origin)?;
+
+			// Update storage.
+			let _task_id = Self::update_created_task(&signer, &task_id, &title, &specification, &budget, deadline)?;
+
+			// TODO: Check if user has balance to update task
+			// T::Currency::reserve(&signer, budget).map_err(|_| "locker can't afford to lock the amount requested")?;
+
+			// Emit a Task Updated Event.
+			Self::deposit_event(Event::TaskUpdated(signer, task_id));
 			// Return a successful DispatchResultWithPostInfo
 			Ok(().into())
 		}
@@ -254,10 +290,10 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Function to remove task. [origin, task_id]
+		/// Function to accept a completed task. [origin, task_id]
 		#[transactional]
-		#[pallet::weight(<T as Config>::WeightInfo::remove_task(0,0))]
-		pub fn remove_task(origin: OriginFor<T>, task_id: T::Hash) -> DispatchResult {
+		#[pallet::weight(<T as Config>::WeightInfo::accept_task(0,0))]
+		pub fn accept_task(origin: OriginFor<T>, task_id: T::Hash) -> DispatchResult {
 
 			// Check that the extrinsic was signed and get the signer.
 			let signer = ensure_signed(origin)?;
@@ -266,7 +302,23 @@ pub mod pallet {
 			Self::delete_task(&signer, &task_id)?;
 
 			// Emit a Task Removed Event.
-			Self::deposit_event(Event::TaskRemoved(signer, task_id));
+			Self::deposit_event(Event::TaskAccepted(signer, task_id));
+
+			Ok(())
+		}
+
+		/// Function to reject a completed task. [origin, task_id]
+		#[pallet::weight(<T as Config>::WeightInfo::reject_task(0,0))]
+		pub fn reject_task(origin: OriginFor<T>, task_id: T::Hash) -> DispatchResult {
+
+			// Check that the extrinsic was signed and get the signer.
+			let signer = ensure_signed(origin)?;
+
+			// Reject task and update storage.
+			Self::reject_completed_task(&signer, &task_id)?;
+
+			// Emit a Task Rejected Event.
+			Self::deposit_event(Event::TaskRejected(signer, task_id));
 
 			Ok(())
 		}
@@ -333,6 +385,37 @@ pub mod pallet {
 			Ok(task_id)
 		}
 
+		// Task can be updated only after it has been created. Task that is already in progress can't be updated.
+		pub fn update_created_task(from_initiator: &T::AccountId, task_id: &T::Hash, new_title: &[u8], new_specification: &[u8], new_budget: &BalanceOf<T>, new_deadline: u64) -> Result<(), DispatchError> {
+
+			// Check if task exists
+			let mut task = Self::tasks(&task_id).ok_or(<Error<T>>::TaskNotExist)?;
+
+			// Check if the owner is the one who created task
+			ensure!(Self::is_task_initiator(task_id, from_initiator)?, <Error<T>>::OnlyInitiatorUpdatesTask);
+
+			// Ensure user has a profile before creating a task
+			ensure!(pallet_profile::Pallet::<T>::has_profile(from_initiator).unwrap(), <Error<T>>::NoProfile);
+
+			// Check if task is in created status. Tasks can be updated only before work has been started.
+			ensure!(TaskStatus::Created == task.status, <Error<T>>::NoPermissionToUpdate);
+			
+			// Ensure deadline is in the future
+			let deadline_duration = Duration::from_millis(task.deadline.saturated_into::<u64>());
+			ensure!(T::Time::now() < deadline_duration, Error::<T>::IncorrectDeadlineTimestamp);
+
+			// Init Task Object
+			task.title = new_title.to_vec();
+			task.specification = new_specification.to_vec();
+			task.budget = *new_budget;
+			task.deadline = new_deadline;
+
+			// Insert task into Hashmap
+			<Tasks<T>>::insert(task_id, task);
+
+			Ok(())
+		}
+
 		pub fn assign_task(to: &T::AccountId, task_id: &T::Hash) -> Result<(), DispatchError> {
 			// Check if task exists
 			let mut task = Self::tasks(&task_id).ok_or(<Error<T>>::TaskNotExist)?;
@@ -384,7 +467,7 @@ pub mod pallet {
 
 			// Set current owner to initiator
 			task.current_owner = task.initiator.clone();
-			task.status = TaskStatus::Closed;
+			task.status = TaskStatus::Completed;
 			let task_initiator = task.initiator.clone();
 
 			// Insert into update task
@@ -400,10 +483,10 @@ pub mod pallet {
 
 		pub fn delete_task(task_initiator: &T::AccountId, task_id: &T::Hash) -> Result<(), DispatchError> {
 			// Check if task exists
-			let task = Self::tasks(&task_id).ok_or(<Error<T>>::TaskNotExist)?;
+			let mut task = Self::tasks(&task_id).ok_or(<Error<T>>::TaskNotExist)?;
 
-			//Check if the owner is the one who created task
-			ensure!(Self::is_task_initiator(task_id, task_initiator)?, <Error<T>>::OnlyInitiatorClosesTask);
+			// Check if the owner is the one who created task
+			ensure!(Self::is_task_initiator(task_id, task_initiator)?, <Error<T>>::OnlyInitiatorAcceptsTask);
 
 			// Remove from ownership
 			<TasksOwned<T>>::try_mutate(&task_initiator, |owned| {
@@ -417,12 +500,16 @@ pub mod pallet {
 			// Transfer balance to volunteer
 			let volunteer = task.volunteer.clone();
 			let budget = task.budget;
+			task.status = TaskStatus::Accepted;
 			Self::transfer_balance(task_initiator, &volunteer, budget)?;
+
+			// Update task state
+			<Tasks<T>>::insert(task_id, task);
 
 			// Reward reputation points to profiles who created/completed a task
 			Self::handle_reputation(task_id)?;
 
-			// remove task once closed
+			// remove task once accepted
 			<Tasks<T>>::remove(task_id);
 
 			// Reduce task count
@@ -432,10 +519,47 @@ pub mod pallet {
 			Ok(())
 		}
 
+		// Task can be rejected by the creator, which places the task back into progress.
+		pub fn reject_completed_task(task_initiator: &T::AccountId, task_id: &T::Hash) -> Result<(), DispatchError> {
+			
+			// Check if task exists
+			let mut task = Self::tasks(&task_id).ok_or(<Error<T>>::TaskNotExist)?;
+
+			// Check if the owner is the one who created task
+			ensure!(Self::is_task_initiator(task_id, task_initiator)?, <Error<T>>::OnlyInitiatorAcceptsTask);
+
+			// Check if task is Completed before rejecting it
+			ensure!(TaskStatus::Completed == task.status, <Error<T>>::OnlyCompletedTaskAreRejected);
+
+			// Remove from ownership of initiator
+			<TasksOwned<T>>::try_mutate(&task_initiator, |owned| {
+				if let Some(index) = owned.iter().position(|&id| id == *task_id) {
+					owned.swap_remove(index);
+					return Ok(());
+				}
+				Err(())
+			}).map_err(|_| <Error<T>>::TaskNotExist)?;
+
+			// Set current owner back to volunteer
+			task.current_owner = task.volunteer.clone();
+			task.status = TaskStatus::InProgress;
+			let task_volunteer = task.volunteer.clone();
+
+			// Insert task
+			<Tasks<T>>::insert(task_id, task);
+
+			// Assign task to new owner (original volunteer)
+			<TasksOwned<T>>::try_mutate(task_volunteer, |vec| {
+				vec.try_push(*task_id)
+			}).map_err(|_| <Error<T>>::ExceedMaxTasksOwned)?;
+
+			Ok(())
+		}
+
 		// Function to check if the current signer is the task_initiator
-		pub fn is_task_initiator(task_id: &T::Hash, task_closer: &T::AccountId) -> Result<bool, DispatchError> {
+		pub fn is_task_initiator(task_id: &T::Hash, task_acceptor: &T::AccountId) -> Result<bool, DispatchError> {
 			match Self::tasks(task_id) {
-				Some(task) => Ok(task.initiator == *task_closer),
+				Some(task) => Ok(task.initiator == *task_acceptor),
 				None => Err(<Error<T>>::TaskNotExist.into())
 			}
 		}
@@ -452,8 +576,8 @@ pub mod pallet {
 			// Check if task exists
 			let task = Self::tasks(&task_id).ok_or(<Error<T>>::TaskNotExist)?;
 
-			// Ensure that reputation is added only when task is in status Closed
-			if task.status == TaskStatus::Closed {
+			// Ensure that reputation is added only when task is in status Accepted
+			if task.status == TaskStatus::Accepted {
 				pallet_profile::Pallet::<T>::add_reputation(&task.initiator).map_err(|_| Error::<T>::ProfileAddReputationFailed)?;
 				pallet_profile::Pallet::<T>::add_reputation(&task.volunteer).map_err(|_| Error::<T>::ProfileAddReputationFailed)?;
 			}
