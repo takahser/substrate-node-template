@@ -101,14 +101,17 @@ benchmarks! {
 
 		let s in 1 .. u8::MAX.into();
 		let name = vec![0u8, s as u8];
+		let description = vec![0u8, s as u8];
+		let vision = vec![0u8, s as u8];
 
 
-	}: create_organization(RawOrigin::Signed(caller.clone()), name.clone())
-		/* the code to be benchmarked */
-
+	}: create_organization(RawOrigin::Signed(caller.clone()), name.clone(), description.clone(),
+	vision.clone())
 	verify {
 		/* verifying final state */
-		assert_last_event::<T>(Event::<T>::OrganizationCreated( caller, name).into())
+		let org_id = PalletDao::<T>::organization_at_index(1).expect("one org exists, so can't fail.
+			Qed.");
+		assert_last_event::<T>(Event::<T>::OrganizationCreated(caller, org_id).into())
 	}
 
 	dissolve_organization {
@@ -117,16 +120,20 @@ benchmarks! {
 
 		let s in 1 .. u8::MAX.into();
 		let name = vec![0u8, s as u8];
+		let description = vec![0u8, s as u8];
+		let vision = vec![0u8, s as u8];
 
 		// Create organization before dissolving it
-		let _ = PalletDao::<T>::create_organization(RawOrigin::Signed(caller.clone()).into(), name.clone());
+		let _ = PalletDao::<T>::create_organization(RawOrigin::Signed(caller.clone()).into(), name.clone(), description.clone(), vision.clone());
+		let org_id = PalletDao::<T>::organization_at_index(1).expect("one org exists, so can't fail.
+			Qed.");
 
-	}: dissolve_organization(RawOrigin::Signed(caller.clone()), name.clone())
+	}: dissolve_organization(RawOrigin::Signed(caller.clone()), org_id.clone())
 		/* the code to be benchmarked */
 
 	verify {
 		/* verifying final state */
-		assert_last_event::<T>(Event::<T>::OrganizationDissolved( caller, name).into())
+		assert_last_event::<T>(Event::<T>::OrganizationDissolved(caller, org_id).into())
 	}
 
 	add_members {
@@ -135,19 +142,22 @@ benchmarks! {
 
 		let s in 1 .. u8::MAX.into();
 		let name = vec![0u8, s as u8];
+		let description = vec![0u8, s as u8];
+		let vision = vec![0u8, s as u8];
 
 		// Create account for member
 		let account: T::AccountId = account("member", s, SEED);
 
 		// Create organization before adding members to it
-		let _ = PalletDao::<T>::create_organization(RawOrigin::Signed(caller.clone()).into(), name.clone());
+		let _ = PalletDao::<T>::create_organization(RawOrigin::Signed(caller.clone()).into(), name.clone(), description.clone(), vision.clone());
+		let org_id = PalletDao::<T>::organization_at_index(1).expect("one org exists, so can't fail.
+			Qed.");
 
-
-	}: add_members(RawOrigin::Signed(caller.clone()), name.clone(), account.clone())
+	}: add_members(RawOrigin::Signed(caller.clone()), org_id.clone(), account.clone())
 		/* the code to be benchmarked */
 	verify {
 		/* verifying final state */
-		assert_last_event::<T>(Event::<T>::MemberAdded (caller, account ).into());
+		assert_last_event::<T>(Event::<T>::MemberAdded (caller, account, org_id).into());
 	}
 
 	add_tasks {
@@ -156,20 +166,24 @@ benchmarks! {
 
 		let s in 1 .. u8::MAX.into();
 		let name = vec![0u8, s as u8];
+		let description = vec![0u8, s as u8];
+		let vision = vec![0u8, s as u8];
 
 		// Create hash
 		let task_hash_h256 = "task hash";
 		let hash = T::Hashing::hash_of(&task_hash_h256);
 
 		// Create organization before adding members to it
-		let _ = PalletDao::<T>::create_organization(RawOrigin::Signed(caller.clone()).into(), name.clone());
+		let _ = PalletDao::<T>::create_organization(RawOrigin::Signed(caller.clone()).into(), name.clone(), description.clone(), vision.clone());
+		let org_id = PalletDao::<T>::organization_at_index(1).expect("one org exists, so can't fail.
+			Qed.");
 
 
-	}: add_tasks(RawOrigin::Signed(caller.clone()), name.clone(), hash.clone())
+	}: add_tasks(RawOrigin::Signed(caller.clone()), org_id.clone(), hash.clone())
 		/* the code to be benchmarked */
 	verify {
 		/* verifying final state */
-		assert_last_event::<T>(Event::<T>::TaskAdded (caller, hash ).into());
+		assert_last_event::<T>(Event::<T>::TaskAdded (caller, hash, org_id).into());
 	}
 
 	remove_members {
@@ -178,22 +192,26 @@ benchmarks! {
 
 		let s in 1 .. u8::MAX.into();
 		let name = vec![0u8, s as u8];
+		let description = vec![0u8, s as u8];
+		let vision = vec![0u8, s as u8];
 
 		// Create account for member
 		let u:u32 = 7;
 		let account: T::AccountId = account("member", u, SEED);
 
 		// Create organization before adding members to it
-		let _ = PalletDao::<T>::create_organization(RawOrigin::Signed(caller.clone()).into(), name.clone());
-		let _ = PalletDao::<T>::add_members(RawOrigin::Signed(caller.clone()).into(), name.clone(), account.clone());
-		assert_eq!(PalletDao::<T>::organization(name.clone()).len(), 2);
+		let _ = PalletDao::<T>::create_organization(RawOrigin::Signed(caller.clone()).into(), name.clone(), description.clone(), vision.clone());
+		let org_id = PalletDao::<T>::organization_at_index(1).expect("one org exists, so can't fail.
+			Qed.");
+		let _ = PalletDao::<T>::add_members(RawOrigin::Signed(caller.clone()).into(), org_id.clone(), account.clone());
+		assert_eq!(PalletDao::<T>::members(org_id.clone()).len(), 2);
 
-	}: remove_members(RawOrigin::Signed(caller.clone()), name.clone(), account.clone() )
+	}: remove_members(RawOrigin::Signed(caller.clone()), org_id.clone(), account.clone() )
 		/* the code to be benchmarked */
 	verify {
 		/* verifying final state */
-		assert_eq!(PalletDao::<T>::organization(name.clone()).len(), 1);
-		assert_last_event::<T>(Event::<T>::MemberRemoved (caller, account ).into());
+		assert_eq!(PalletDao::<T>::members(org_id.clone()).len(), 1);
+		assert_last_event::<T>(Event::<T>::MemberRemoved (caller, account, org_id).into());
 	}
 
 	remove_tasks {
@@ -202,22 +220,26 @@ benchmarks! {
 
 		let s in 1 .. u8::MAX.into();
 		let name = vec![0u8, s as u8];
+		let description = vec![0u8, s as u8];
+		let vision = vec![0u8, s as u8];
 
 		// Create hash
 		let task_hash_h256 = "task hash";
 		let hash = T::Hashing::hash_of(&task_hash_h256);
 
 		// Create organization
-		let _ = PalletDao::<T>::create_organization(RawOrigin::Signed(caller.clone()).into(), name.clone());
+		let _ = PalletDao::<T>::create_organization(RawOrigin::Signed(caller.clone()).into(), name.clone(), description.clone(), vision.clone());
+		let org_id = PalletDao::<T>::organization_at_index(1).expect("one org exists, so can't fail.
+			Qed.");
 		// Add task to be removed
-		let _ = PalletDao::<T>::add_tasks(RawOrigin::Signed(caller.clone()).into(), name.clone(), hash.clone());
+		let _ = PalletDao::<T>::add_tasks(RawOrigin::Signed(caller.clone()).into(), org_id.clone(), hash.clone());
 
 
-	}: remove_tasks(RawOrigin::Signed(caller.clone()), name.clone(), hash.clone())
+	}: remove_tasks(RawOrigin::Signed(caller.clone()), org_id.clone(), hash.clone())
 		/* the code to be benchmarked */
 	verify {
 		/* verifying final state */
-		assert_last_event::<T>(Event::<T>::TaskRemoved ( caller, hash ).into());
+		assert_last_event::<T>(Event::<T>::TaskRemoved (caller, hash, org_id).into());
 	}
 }
 
