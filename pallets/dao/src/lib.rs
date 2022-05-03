@@ -134,6 +134,11 @@ pub mod pallet {
 	pub(super) type Vision<T: Config> = StorageMap<_, Blake2_128Concat, Vec<u8>, (T::AccountId, T::BlockNumber), ValueQuery>;
 
 	#[pallet::storage]
+	#[pallet::getter(fn organizations)]
+	/// Storage for organizations data, key: hash of Dao struct, Value Dao struct.
+	pub(super) type Organizations<T: Config> = StorageMap<_, Twox64Concat, T::Hash, Dao<T>, OptionQuery>;
+
+	#[pallet::storage]
 	#[pallet::getter(fn members)]
 	/// Create members of organization storage map with key: Hash and value: Vec<AccountID>
 	pub(super) type Members<T: Config> = StorageMap<_, Twox64Concat, T::Hash, Vec<T::AccountId>, ValueQuery>;
@@ -154,7 +159,7 @@ pub mod pallet {
 
 	#[pallet::storage]
 	#[pallet::getter(fn organization_tasks)]
-	/// Create organization storage map with key: name and value: Vec<Hash of task>
+	/// Create organization storage map with key: hash of task and value: Vec<Hash of task>
 	pub(super) type OrganizationTasks<T: Config> = StorageMap<_, Twox64Concat, T::Hash, Vec<T::Hash>, ValueQuery>;
 
 	#[pallet::storage]
@@ -454,6 +459,9 @@ pub mod pallet {
 
 			let org_id = T::Hashing::hash_of(&dao);
 
+			// Insert Dao struct in Organizations storage
+			<Organizations<T>>::insert(org_id, dao);
+
 			let mut members = <Pallet<T>>::members(org_id);
 			members.push(from_initiator.clone());
 
@@ -465,6 +473,7 @@ pub mod pallet {
 				Self::organization_count().checked_add(1).ok_or(<Error<T>>::OrganizationCountOverflow)?;
 			<OrganizationCount<T>>::put(new_count);
 
+			// Insert index -> organization mapping
 			let new_index =
 				Self::organization_index().checked_add(1).ok_or(<Error<T>>::OrganizationCountOverflow)?;
 			<OrganizationIndex<T>>::put(new_index);
@@ -478,6 +487,8 @@ pub mod pallet {
 			// check if its DAO original creator
 			Self::is_dao_founder(from_initiator, org_id)?;
 
+			// Remove Dao struct from Organizations storage
+			<Organizations<T>>::remove(org_id);
 			// Remove organizational instance
 			<Members<T>>::remove(org_id);
 
