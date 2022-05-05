@@ -105,8 +105,8 @@ pub mod pallet {
 		pub description: Vec<u8>,
 		pub owner: AccountOf<T>,
 		pub vision: Vec<u8>,
-		pub created_time: u64,
-		pub last_updated: u64,
+		pub created_time: <T as frame_system::Config>::BlockNumber,
+		pub last_updated: <T as frame_system::Config>::BlockNumber,
 	}
 
 	/// Configure the pallet by specifying the parameters and types on which it depends.
@@ -147,15 +147,6 @@ pub mod pallet {
 	#[pallet::getter(fn organization_count)]
 	/// OrganizationCount: Get total number of organizations in the system
 	pub(super) type OrganizationCount<T: Config> = StorageValue<_, u64, ValueQuery>;
-
-	#[pallet::storage]
-	#[pallet::getter(fn organization_index)]
-	/// Storage to track unique index of organization
-	pub(super) type OrganizationIndex<T: Config> = StorageValue<_, u64, ValueQuery>;
-
-	#[pallet::storage]
-	#[pallet::getter(fn organization_at_index)]
-	pub(super) type OrganizationIndexOf<T: Config> = StorageMap<_, Blake2_128Concat, u64, T::Hash>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn organization_tasks)]
@@ -217,15 +208,15 @@ pub mod pallet {
 		StorageOverflow,
 		/// The vision has already been created.
 		VisionAlreadyExists,
-		/// The Vision doesn't exist
+		/// The Vision doesn't exist.
 		NoSuchVision,
 		/// You are not the owner of the vision.
 		NotVisionOwner,
-		/// Max limit for Visions reached
+		/// Max limit for Visions reached.
 		VisionCountOverflow,
-		/// Max limit for Organizations reached
+		/// Max limit for Organizations reached.
 		OrganizationCountOverflow,
-		/// This vision has already been signed
+		/// This vision has already been signed.
 		AlreadySigned,
 		/// You can't unsign from vision that that you haven't signed.
 		NotSigned,
@@ -235,9 +226,11 @@ pub mod pallet {
 		AlreadyMember,
 		/// The organization doesn't exist.
 		InvalidOrganization,
+		/// The organization already exists.
+		OrganizationAlreadyExists,
 		/// The user is not a member of this organization.
 		NotMember,
-		/// Task doesn't exist
+		/// Task doesn't exist.
 		TaskNotExist,
 		/// Task has been already added to organization.
 		TaskAlreadyExists,
@@ -337,11 +330,7 @@ pub mod pallet {
 
 		/// Function for creating an organization [origin, name, description, vision]
 		#[pallet::weight(<T as Config>::WeightInfo::create_organization(0))]
-		pub fn create_organization(
-			origin: OriginFor<T>,
-			name: Vec<u8>,
-			description: Vec<u8>,
-			vision: Vec<u8>) -> DispatchResult {
+		pub fn create_organization(origin: OriginFor<T>, name: Vec<u8>, description: Vec<u8>, vision: Vec<u8>) -> DispatchResult {
 
 			// Check that the extrinsic was signed and get the signer.
 			let who = ensure_signed(origin)?;
@@ -441,44 +430,44 @@ pub mod pallet {
 
 	// *** Helper functions *** //
 	impl<T:Config> Pallet<T> {
-		pub fn new_org(
-			from_initiator: &T::AccountId,
-			name: &[u8],
-			description: &[u8],
-			vision: &[u8],
-		) -> Result<T::Hash, DispatchError> {
-
+		// helper method for testing
+		pub fn get_hash_for_dao(from_initiator: &T::AccountId, name: &[u8], description: &[u8], vision: &[u8], created_time: T::BlockNumber , last_updated: T::BlockNumber) -> T::Hash {
 			let dao = Dao::<T> {
 				name: name.to_vec(),
 				description: description.to_vec(),
 				owner: from_initiator.clone(),
 				vision: vision.to_vec(),
-				created_time: 0,
-				last_updated: 0,
+				created_time,
+				last_updated,
+			};
+
+			let hash = T::Hashing::hash_of(&dao);
+			hash
+		}
+		pub fn new_org(from_initiator: &T::AccountId, name: &[u8], description: &[u8], vision: &[u8]) -> Result<T::Hash, DispatchError> {
+			let current_block = <frame_system::Pallet<T>>::block_number();
+			let dao = Dao::<T> {
+				name: name.to_vec(),
+				description: description.to_vec(),
+				owner: from_initiator.clone(),
+				vision: vision.to_vec(),
+				created_time: current_block,
+				last_updated: current_block,
 			};
 
 			let org_id = T::Hashing::hash_of(&dao);
+			ensure!(<Organizations<T>>::get(org_id) == None, <Error<T>>::OrganizationAlreadyExists);
 
 			// Insert Dao struct in Organizations storage
 			<Organizations<T>>::insert(org_id, dao);
 
-			let mut members = <Pallet<T>>::members(org_id);
-			members.push(from_initiator.clone());
-
 			// Insert vector into Hashmap
-			<Members<T>>::insert(org_id, members);
+			<Members<T>>::insert(org_id, vec![from_initiator]);
 
 			// Increase organization count
 			let new_count =
 				Self::organization_count().checked_add(1).ok_or(<Error<T>>::OrganizationCountOverflow)?;
 			<OrganizationCount<T>>::put(new_count);
-
-			// Insert index -> organization mapping
-			let new_index =
-				Self::organization_index().checked_add(1).ok_or(<Error<T>>::OrganizationCountOverflow)?;
-			<OrganizationIndex<T>>::put(new_index);
-			<OrganizationIndexOf<T>>::insert(new_index, org_id);
-
 			Ok(org_id)
 		}
 
@@ -551,17 +540,17 @@ pub mod pallet {
 			Self::is_dao_founder(from_initiator, org_id)?;
 
 			// Find member and remove from Vector
-			// let mut members = <Pallet<T>>::organization(org_name);
-			let index = members.binary_search(account).ok().ok_or(<Error<T>>::NotMember)?;
-			members.remove(index);
-
-			// Find current organizations and remove user as MemberOf
-			let mut current_organizations = <Pallet<T>>::member_of(&account);
-			let index1 = current_organizations.binary_search(&org_id).ok().ok_or(<Error<T>>::InvalidOrganization)?;
-			current_organizations.remove(index1);
-
+			ensure!( members.iter().any(|a| *a == *account), Error::<T>::NotMember);
+			members = members.into_iter().filter(|a| *a != *account).collect();
 			// Update Organization Members
 			<Members<T>>::insert(org_id, members);
+
+			// Find current organizations and remove org_id from MemberOf user
+			let mut current_organizations = <Pallet<T>>::member_of(&account);
+			ensure!(current_organizations.iter().any(|a| *a == org_id), Error::<T>::InvalidOrganization);
+			current_organizations = current_organizations.into_iter().filter(|a| *a !=
+				org_id).collect();
+			// Update MemberOf
 			<MemberOf<T>>::insert(&account, &current_organizations);
 
 			Ok(())
@@ -577,8 +566,8 @@ pub mod pallet {
 
 			// Find task and remove from Vector
 			let mut tasks = <Pallet<T>>::organization_tasks(org_id);
-			let index = tasks.binary_search(task).ok().ok_or(<Error<T>>::TaskNotExist)?;
-			tasks.remove(index);
+			ensure!(tasks.iter().any(|a| *a == *task), Error::<T>::TaskNotExist);
+			tasks = tasks.into_iter().filter(|a| *a != *task).collect();
 
 			// Update organization tasks
 			<OrganizationTasks<T>>::insert(org_id, tasks);
@@ -617,8 +606,8 @@ pub mod pallet {
 			let mut members = <Pallet<T>>::applicants_to_organization(vision_document);
 
 			// Ensure not signed already
-			let index = members.binary_search(from_initiator).ok().ok_or(<Error<T>>::NotSigned)?;
-			members.remove(index);
+			ensure!(members.iter().any(|a| *a == *from_initiator), Error::<T>::NotSigned);
+			members = members.into_iter().filter(|a| *a != *from_initiator).collect();
 
 			// Update storage.
 			<ApplicantsToOrganization<T>>::insert(vision_document, members);

@@ -1,8 +1,24 @@
 use crate::{mock::*, Error};
 use frame_support::{assert_noop, assert_ok};
-use sp_core::sr25519;
+use sp_core::{sr25519, H256};
 
 
+type OrgEvent = crate::Event<Test>;
+
+fn last_event() -> OrgEvent {
+	System::events()
+		.into_iter()
+		.map(|r| r.event)
+		.filter_map(|e| {
+			if let Event::Dao(inner) = e {
+				Some(inner)
+			} else {
+				None
+			}
+		})
+		.last()
+		.expect("Event expected")
+}
 
 #[test]
 fn can_create_vision() {
@@ -218,9 +234,7 @@ fn user_can_unsign_from_vision_only_if_signed_previously() {
 	});
 }
 
-#[test]
-fn can_create_an_organization() {
-	new_test_ext().execute_with(|| {
+fn create_organization_1() -> H256 {
 
 		// Create Static Organization name, description, vision
 		const ORG_NAME: &'static [u8] = &[10];
@@ -230,9 +244,39 @@ fn can_create_an_organization() {
 		// Ensure organization can be created
 		assert_ok!(Dao::create_organization(Origin::signed(*ALICE), ORG_NAME.to_vec(),
 		ORG_DESC.to_vec(), ORG_VISION.to_vec()));
+		let event = last_event();
+		if let crate::Event::OrganizationCreated(_creator, org_id) = event {
+			return org_id;
+		} else {
+			assert!(false, "Last event must be OrganizationCreated");
+			return H256::zero();
+		}
+}
 
-		let org_id = Dao::organization_at_index(1).expect("must exist one org");
+fn create_organization_2() -> H256 {
 
+		// Create Static Organization name, description, vision
+		const ORG_NAME: &'static [u8] = &[12];
+		const ORG_DESC: &'static [u8] = &[12];
+		const ORG_VISION: &'static [u8] = &[12];
+
+		// Ensure organization can be created
+		assert_ok!(Dao::create_organization(Origin::signed(*ALICE), ORG_NAME.to_vec(),
+		ORG_DESC.to_vec(), ORG_VISION.to_vec()));
+		let event = last_event();
+		if let crate::Event::OrganizationCreated(_creator, org_id) = event {
+			return org_id;
+		} else {
+			assert!(false, "Last event must be OrganizationCreated");
+			return H256::zero();
+		}
+}
+
+#[test]
+fn can_create_an_organization() {
+	new_test_ext().execute_with(|| {
+
+		let org_id = create_organization_1();
 		let members = Dao::members(org_id);
 
 		// Ensure the length of organization is equal to 1, and that member is creater of org.
@@ -241,17 +285,25 @@ fn can_create_an_organization() {
 }
 
 #[test]
-fn creating_organization_increases_organization_count() {
+fn cant_create_an_organization_more_than_once_in_same_block() {
 	new_test_ext().execute_with(|| {
 		// Create Static Organization name, description, vision
-		const ORG_NAME: &'static [u8] = &[10];
-		const ORG_DESC: &'static [u8] = &[10];
-		const ORG_VISION: &'static [u8] = &[10];
+		const ORG_NAME: &'static [u8] = &[12];
+		const ORG_DESC: &'static [u8] = &[12];
+		const ORG_VISION: &'static [u8] = &[12];
 
-		// Ensure organization can be created
 		assert_ok!(Dao::create_organization(Origin::signed(*ALICE), ORG_NAME.to_vec(),
 		ORG_DESC.to_vec(), ORG_VISION.to_vec()));
+		// can't create org with same data in same block
+		assert_noop!(Dao::create_organization(Origin::signed(*ALICE), ORG_NAME.to_vec(),
+		ORG_DESC.to_vec(), ORG_VISION.to_vec()), crate::Error::<Test>::OrganizationAlreadyExists);
+	});
+}
 
+#[test]
+fn creating_organization_increases_organization_count() {
+	new_test_ext().execute_with(|| {
+		create_organization_1();
 		// Ensure organization count is 1
 		assert_eq!(Dao::organization_count(), 1);
 	});
@@ -260,25 +312,8 @@ fn creating_organization_increases_organization_count() {
 #[test]
 fn can_create_multiple_organization() {
 	new_test_ext().execute_with(|| {
-
-		// Create Static Organization name, description, vision
-		const ORG_NAME1: &'static [u8] = &[10];
-		const ORG_DESC1: &'static [u8] = &[10];
-		const ORG_VISION1: &'static [u8] = &[10];
-		const ORG_NAME2: &'static [u8] = &[1];
-		const ORG_DESC2: &'static [u8] = &[1];
-		const ORG_VISION2: &'static [u8] = &[1];
-
-		// Ensure organization can be created
-		assert_ok!(Dao::create_organization(Origin::signed(*ALICE), ORG_NAME1.to_vec(),
-		ORG_DESC1.to_vec(), ORG_VISION1.to_vec()));
-
-		// Ensure second organization can be created by a different user
-		assert_ok!(Dao::create_organization(Origin::signed(*BOB), ORG_NAME2.to_vec(),
-		ORG_DESC2.to_vec(), ORG_VISION2.to_vec()));
-
-		let org_id_1 = Dao::organization_at_index(1).expect("must exist one org");
-		let org_id_2 = Dao::organization_at_index(2).expect("must exist one org");
+		let org_id_1 = create_organization_1();
+		let org_id_2 = create_organization_2();
 		// Ensure each organization was created successfully
 		assert_eq!(Dao::members(org_id_1).len(), 1);
 		assert_eq!(Dao::members(org_id_2).len(), 1);
@@ -293,16 +328,7 @@ fn can_create_multiple_organization() {
 fn can_remove_an_organization() {
 	new_test_ext().execute_with(|| {
 
-		// Create Static Organization name, description, vision
-		const ORG_NAME: &'static [u8] = &[10];
-		const ORG_DESC: &'static [u8] = &[10];
-		const ORG_VISION: &'static [u8] = &[10];
-
-		// Ensure organization can be created
-		assert_ok!(Dao::create_organization(Origin::signed(*ALICE), ORG_NAME.to_vec(),
-		ORG_DESC.to_vec(), ORG_VISION.to_vec()));
-
-		let org_id = Dao::organization_at_index(1).expect("must exist one org");
+		let org_id = create_organization_1();
 		// Ensure the length of organization is equal to 1
 		assert_eq!(Dao::members(org_id).len(), 1);
 
@@ -318,16 +344,7 @@ fn can_remove_an_organization() {
 fn removing_organization_decreases_organization_count() {
 	new_test_ext().execute_with(|| {
 
-		// Create Static Organization name, description, vision
-		const ORG_NAME: &'static [u8] = &[10];
-		const ORG_DESC: &'static [u8] = &[10];
-		const ORG_VISION: &'static [u8] = &[10];
-
-		// Ensure organization can be created
-		assert_ok!(Dao::create_organization(Origin::signed(*ALICE), ORG_NAME.to_vec(),
-		ORG_DESC.to_vec(), ORG_VISION.to_vec()));
-
-		let org_id = Dao::organization_at_index(1).expect("must exist one org");
+		let org_id = create_organization_1();
 		// Ensure the length of organization is equal to 1
 		assert_eq!(Dao::members(org_id).len(), 1);
 
@@ -347,16 +364,7 @@ fn removing_organization_decreases_organization_count() {
 fn only_creator_can_remove_their_organization() {
 	new_test_ext().execute_with(|| {
 
-		// Create Static Organization name, description, vision
-		const ORG_NAME: &'static [u8] = &[10];
-		const ORG_DESC: &'static [u8] = &[10];
-		const ORG_VISION: &'static [u8] = &[10];
-
-		// Ensure organization can be created
-		assert_ok!(Dao::create_organization(Origin::signed(*ALICE), ORG_NAME.to_vec(),
-		ORG_DESC.to_vec(), ORG_VISION.to_vec()));
-
-		let org_id = Dao::organization_at_index(1).expect("must exist one org");
+		let org_id = create_organization_1();
 		// Ensure the length of organization is equal to 1
 		assert_eq!(Dao::members(org_id).len(), 1);
 
@@ -372,17 +380,8 @@ fn only_creator_can_remove_their_organization() {
 #[test]
 fn can_add_user_to_organization() {
 	new_test_ext().execute_with(|| {
+		let org_id = create_organization_1();
 
-		// Create Static Organization name, description, vision
-		const ORG_NAME: &'static [u8] = &[10];
-		const ORG_DESC: &'static [u8] = &[10];
-		const ORG_VISION: &'static [u8] = &[10];
-
-		// Ensure organization can be created
-		assert_ok!(Dao::create_organization(Origin::signed(*ALICE), ORG_NAME.to_vec(),
-		ORG_DESC.to_vec(), ORG_VISION.to_vec()));
-
-		let org_id = Dao::organization_at_index(1).expect("must exist one org");
 		// Ensure the length of organization is equal to 1
 		assert_eq!(Dao::members(org_id).len(), 1);
 		// Ensure users can be added to a DAO
@@ -397,17 +396,8 @@ fn can_add_user_to_organization() {
 #[test]
 fn only_creator_can_add_user_to_organization() {
 	new_test_ext().execute_with(|| {
+		let org_id = create_organization_1();
 
-		// Create Static Organization name, description, vision
-		const ORG_NAME: &'static [u8] = &[10];
-		const ORG_DESC: &'static [u8] = &[10];
-		const ORG_VISION: &'static [u8] = &[10];
-
-		// Ensure organization can be created
-		assert_ok!(Dao::create_organization(Origin::signed(*ALICE), ORG_NAME.to_vec(),
-		ORG_DESC.to_vec(), ORG_VISION.to_vec()));
-
-		let org_id = Dao::organization_at_index(1).expect("must exist one org");
 		// Ensure the length of organization is equal to 1
 		assert_eq!(Dao::members(org_id).len(), 1);
 		// Throw error if another than Creator is trying to add members
@@ -419,17 +409,8 @@ fn only_creator_can_add_user_to_organization() {
 #[test]
 fn can_only_add_members_if_not_already_in_organization() {
 	new_test_ext().execute_with(|| {
+		let org_id = create_organization_1();
 
-		// Create Static Organization name, description, vision
-		const ORG_NAME: &'static [u8] = &[10];
-		const ORG_DESC: &'static [u8] = &[10];
-		const ORG_VISION: &'static [u8] = &[10];
-
-		// Ensure organization can be created
-		assert_ok!(Dao::create_organization(Origin::signed(*ALICE), ORG_NAME.to_vec(),
-		ORG_DESC.to_vec(), ORG_VISION.to_vec()));
-
-		let org_id = Dao::organization_at_index(1).expect("must exist one org");
 		// Ensure the length of organization is equal to 1
 		assert_eq!(Dao::members(org_id).len(), 1);
 		// Throw error if another than Creator is trying to add members
@@ -443,17 +424,8 @@ fn can_only_add_members_if_not_already_in_organization() {
 #[test]
 fn organization_exists_check_before_adding_user_to_org() {
 	new_test_ext().execute_with(|| {
+		let org_id = create_organization_1();
 
-		// Create Static Organization name, description, vision
-		const ORG_NAME: &'static [u8] = &[10];
-		const ORG_DESC: &'static [u8] = &[10];
-		const ORG_VISION: &'static [u8] = &[10];
-
-		// Ensure organization can be created
-		assert_ok!(Dao::create_organization(Origin::signed(*ALICE), ORG_NAME.to_vec(),
-		ORG_DESC.to_vec(), ORG_VISION.to_vec()));
-
-		let org_id = Dao::organization_at_index(1).expect("must exist one org");
 		// Ensure the length of organization is equal to 1
 		assert_eq!(Dao::members(org_id).len(), 1);
 		// dissolve_organization
@@ -466,17 +438,8 @@ fn organization_exists_check_before_adding_user_to_org() {
 #[test]
 fn only_creator_can_remove_users_from_organization() {
 	new_test_ext().execute_with(|| {
+		let org_id = create_organization_1();
 
-		// Create Static Organization name, description, vision
-		const ORG_NAME: &'static [u8] = &[10];
-		const ORG_DESC: &'static [u8] = &[10];
-		const ORG_VISION: &'static [u8] = &[10];
-
-		// Ensure organization can be created
-		assert_ok!(Dao::create_organization(Origin::signed(*ALICE), ORG_NAME.to_vec(),
-		ORG_DESC.to_vec(), ORG_VISION.to_vec()));
-
-		let org_id = Dao::organization_at_index(1).expect("must exist one org");
 		// Ensure the length of organization is equal to 1
 		assert_eq!(Dao::members(org_id).len(), 1);
 
@@ -492,17 +455,8 @@ fn only_creator_can_remove_users_from_organization() {
 #[test]
 fn organization_exists_check_before_removing_user_from_org() {
 	new_test_ext().execute_with(|| {
+		let org_id = create_organization_1();
 
-		// Create Static Organization name, description, vision
-		const ORG_NAME: &'static [u8] = &[10];
-		const ORG_DESC: &'static [u8] = &[10];
-		const ORG_VISION: &'static [u8] = &[10];
-
-		// Ensure organization can be created
-		assert_ok!(Dao::create_organization(Origin::signed(*ALICE), ORG_NAME.to_vec(),
-		ORG_DESC.to_vec(), ORG_VISION.to_vec()));
-
-		let org_id = Dao::organization_at_index(1).expect("must exist one org");
 		// Ensure the length of organization is equal to 1
 		assert_eq!(Dao::members(org_id).len(), 1);
 
@@ -520,16 +474,7 @@ fn organization_exists_check_before_removing_user_from_org() {
 fn can_remove_users_from_organization() {
 	new_test_ext().execute_with(|| {
 
-		// Create Static Organization name, description, vision
-		const ORG_NAME: &'static [u8] = &[10];
-		const ORG_DESC: &'static [u8] = &[10];
-		const ORG_VISION: &'static [u8] = &[10];
-
-		// Ensure organization can be created
-		assert_ok!(Dao::create_organization(Origin::signed(*ALICE), ORG_NAME.to_vec(),
-		ORG_DESC.to_vec(), ORG_VISION.to_vec()));
-
-		let org_id = Dao::organization_at_index(1).expect("must exist one org");
+		let org_id = create_organization_1();
 		// Ensure the length of organization is equal to 1
 		assert_eq!(Dao::members(org_id).len(), 1);
 
@@ -550,17 +495,7 @@ fn can_remove_users_from_organization() {
 fn can_only_remove_users_that_belong_to_organization() {
 	new_test_ext().execute_with(|| {
 
-
-		// Create Static Organization name, description, vision
-		const ORG_NAME: &'static [u8] = &[10];
-		const ORG_DESC: &'static [u8] = &[10];
-		const ORG_VISION: &'static [u8] = &[10];
-
-		// Ensure organization can be created
-		assert_ok!(Dao::create_organization(Origin::signed(*ALICE), ORG_NAME.to_vec(),
-		ORG_DESC.to_vec(), ORG_VISION.to_vec()));
-
-		let org_id = Dao::organization_at_index(1).expect("must exist one org");
+		let org_id = create_organization_1();
 		// Ensure the length of organization is equal to 1
 		assert_eq!(Dao::members(org_id).len(), 1);
 		// Ensure users can be added to a DAO
@@ -579,31 +514,16 @@ fn can_only_remove_users_that_belong_to_organization() {
 fn user_can_view_organization_it_belongs_to_member_of() {
 	new_test_ext().execute_with(|| {
 
-		// Create Static Organization name, description, vision
-		const ORG_NAME1: &'static [u8] = &[10];
-		const ORG_DESC1: &'static [u8] = &[10];
-		const ORG_VISION1: &'static [u8] = &[10];
-		const ORG_NAME2: &'static [u8] = &[1];
-		const ORG_DESC2: &'static [u8] = &[1];
-		const ORG_VISION2: &'static [u8] = &[1];
 
-		// Ensure organization can be created
-		assert_ok!(Dao::create_organization(Origin::signed(*ALICE), ORG_NAME1.to_vec(),
-		ORG_DESC1.to_vec(), ORG_VISION1.to_vec()));
-
-		// Ensure second organization can be created by a different user
-		assert_ok!(Dao::create_organization(Origin::signed(*BOB), ORG_NAME2.to_vec(),
-		ORG_DESC2.to_vec(), ORG_VISION2.to_vec()));
-
-		let org_id_1 = Dao::organization_at_index(1).expect("must exist one org");
-		let org_id_2 = Dao::organization_at_index(2).expect("must exist one org");
+		let org_id_1 = create_organization_1();
+		let org_id_2 = create_organization_2();
 		// Ensure each organization was created successfully
 		assert_eq!(Dao::members(org_id_1).len(), 1);
 		assert_eq!(Dao::members(org_id_2).len(), 1);
 
 		// Ensure users can be added to a DAO
 		assert_ok!(Dao::add_members(Origin::signed(*ALICE), org_id_1, *EVE));
-		assert_ok!(Dao::add_members(Origin::signed(*BOB), org_id_2, *EVE));
+		assert_ok!(Dao::add_members(Origin::signed(*ALICE), org_id_2, *EVE));
 
 		// Ensure EVE belongs to two organizations
 		assert_eq!(Dao::member_of(*EVE).len(), 2);
@@ -614,25 +534,8 @@ fn user_can_view_organization_it_belongs_to_member_of() {
 #[test]
 fn user_can_be_removed_from_organization_it_belongs_to_member_of() {
 	new_test_ext().execute_with(|| {
-
-		// Create Static Organization name, description, vision
-		const ORG_NAME1: &'static [u8] = &[10];
-		const ORG_DESC1: &'static [u8] = &[10];
-		const ORG_VISION1: &'static [u8] = &[10];
-		const ORG_NAME2: &'static [u8] = &[1];
-		const ORG_DESC2: &'static [u8] = &[1];
-		const ORG_VISION2: &'static [u8] = &[1];
-
-		// Ensure organization can be created
-		assert_ok!(Dao::create_organization(Origin::signed(*ALICE), ORG_NAME1.to_vec(),
-		ORG_DESC1.to_vec(), ORG_VISION1.to_vec()));
-
-		// Ensure second organization can be created by a different user
-		assert_ok!(Dao::create_organization(Origin::signed(*BOB), ORG_NAME2.to_vec(),
-		ORG_DESC2.to_vec(), ORG_VISION2.to_vec()));
-
-		let org_id_1 = Dao::organization_at_index(1).expect("must exist one org");
-		let org_id_2 = Dao::organization_at_index(2).expect("must exist one org");
+		let org_id_1 = create_organization_1();
+		let org_id_2 = create_organization_2();
 		// Ensure each organization was created successfully
 		assert_eq!(Dao::members(org_id_1).len(), 1);
 		assert_eq!(Dao::members(org_id_2).len(), 1);
@@ -641,7 +544,7 @@ fn user_can_be_removed_from_organization_it_belongs_to_member_of() {
 
 		// Ensure user 4 can be added to a DAO
 		assert_ok!(Dao::add_members(Origin::signed(*ALICE), org_id_1, *EVE));
-		assert_ok!(Dao::add_members(Origin::signed(*BOB), org_id_2, *EVE));
+		assert_ok!(Dao::add_members(Origin::signed(*ALICE), org_id_2, *EVE));
 
 		// Ensure the user 4 is member of 2 organizations
 		assert_eq!(Dao::member_of(*EVE).len(), 2);
@@ -659,24 +562,9 @@ fn user_can_be_removed_from_organization_it_belongs_to_member_of() {
 fn user_can_not_be_removed_from_organization_that_does_not_exist() {
 	new_test_ext().execute_with(|| {
 
-		// Create Static Organization name, description, vision
-		const ORG_NAME1: &'static [u8] = &[10];
-		const ORG_DESC1: &'static [u8] = &[10];
-		const ORG_VISION1: &'static [u8] = &[10];
-		const ORG_NAME2: &'static [u8] = &[1];
-		const ORG_DESC2: &'static [u8] = &[1];
-		const ORG_VISION2: &'static [u8] = &[1];
+		let org_id_1 = create_organization_1();
+		let org_id_2 = create_organization_2();
 
-		// Ensure organization can be created
-		assert_ok!(Dao::create_organization(Origin::signed(*ALICE), ORG_NAME1.to_vec(),
-		ORG_DESC1.to_vec(), ORG_VISION1.to_vec()));
-
-		// Ensure second organization can be created by a different user
-		assert_ok!(Dao::create_organization(Origin::signed(*BOB), ORG_NAME2.to_vec(),
-		ORG_DESC2.to_vec(), ORG_VISION2.to_vec()));
-
-		let org_id_1 = Dao::organization_at_index(1).expect("must exist one org");
-		let org_id_2 = Dao::organization_at_index(2).expect("must exist one org");
 		// Ensure each organization was created successfully
 		assert_eq!(Dao::members(org_id_1).len(), 1);
 		assert_eq!(Dao::members(org_id_2).len(), 1);
@@ -707,16 +595,7 @@ fn can_add_tasks_to_organization() {
 
 		let hash = sp_core::H256::zero();
 
-		// Create Static Organization name, description, vision
-		const ORG_NAME: &'static [u8] = &[10];
-		const ORG_DESC: &'static [u8] = &[10];
-		const ORG_VISION: &'static [u8] = &[10];
-
-		// Ensure organization can be created
-		assert_ok!(Dao::create_organization(Origin::signed(*ALICE), ORG_NAME.to_vec(),
-		ORG_DESC.to_vec(), ORG_VISION.to_vec()));
-
-		let org_id = Dao::organization_at_index(1).expect("must exist one org");
+		let org_id = create_organization_1();
 
 		// Ensure tasks can be added to a DAO
 		assert_ok!(Dao::add_tasks(Origin::signed(*ALICE), org_id, hash));
@@ -733,16 +612,7 @@ fn can_add_task_to_organization_only_once() {
 
 		let hash = sp_core::H256::zero();
 
-		// Create Static Organization name, description, vision
-		const ORG_NAME: &'static [u8] = &[10];
-		const ORG_DESC: &'static [u8] = &[10];
-		const ORG_VISION: &'static [u8] = &[10];
-
-		// Ensure organization can be created
-		assert_ok!(Dao::create_organization(Origin::signed(*ALICE), ORG_NAME.to_vec(),
-		ORG_DESC.to_vec(), ORG_VISION.to_vec()));
-
-		let org_id = Dao::organization_at_index(1).expect("must exist one org");
+		let org_id = create_organization_1();
 
 		// Add task twice
 		assert_ok!(Dao::add_tasks(Origin::signed(*ALICE), org_id, hash));
@@ -761,16 +631,8 @@ fn only_creator_can_add_task_to_organization() {
 	new_test_ext().execute_with(|| {
 
 		let hash = sp_core::H256::zero();
-		// Create Static Organization name, description, vision
-		const ORG_NAME: &'static [u8] = &[10];
-		const ORG_DESC: &'static [u8] = &[10];
-		const ORG_VISION: &'static [u8] = &[10];
 
-		// Ensure organization can be created
-		assert_ok!(Dao::create_organization(Origin::signed(*ALICE), ORG_NAME.to_vec(),
-		ORG_DESC.to_vec(), ORG_VISION.to_vec()));
-
-		let org_id = Dao::organization_at_index(1).expect("must exist one org");
+		let org_id = create_organization_1();
 
 		// Throw error if another than Creator is trying to add members
 		assert_noop!(Dao::add_tasks(Origin::signed(*BOB), org_id, hash), Error::<Test>::NotOrganizationCreator);
@@ -794,16 +656,8 @@ fn can_remove_task_from_organization() {
 	new_test_ext().execute_with(|| {
 
 		let hash = sp_core::H256::zero();
-		// Create Static Organization name, description, vision
-		const ORG_NAME: &'static [u8] = &[10];
-		const ORG_DESC: &'static [u8] = &[10];
-		const ORG_VISION: &'static [u8] = &[10];
 
-		// Ensure organization can be created
-		assert_ok!(Dao::create_organization(Origin::signed(*ALICE), ORG_NAME.to_vec(),
-		ORG_DESC.to_vec(), ORG_VISION.to_vec()));
-
-		let org_id = Dao::organization_at_index(1).expect("must exist one org");
+		let org_id = create_organization_1();
 
 		// Add task to organization
 		assert_ok!(Dao::add_tasks(Origin::signed(*ALICE), org_id, hash));
@@ -826,16 +680,7 @@ fn can_remove_task_from_organization_only_once() {
 
 		let hash = sp_core::H256::zero();
 
-		// Create Static Organization name, description, vision
-		const ORG_NAME: &'static [u8] = &[10];
-		const ORG_DESC: &'static [u8] = &[10];
-		const ORG_VISION: &'static [u8] = &[10];
-
-		// Ensure organization can be created
-		assert_ok!(Dao::create_organization(Origin::signed(*ALICE), ORG_NAME.to_vec(),
-		ORG_DESC.to_vec(), ORG_VISION.to_vec()));
-
-		let org_id = Dao::organization_at_index(1).expect("must exist one org");
+		let org_id = create_organization_1();
 
 		// Add task to organization
 		assert_ok!(Dao::add_tasks(Origin::signed(*ALICE), org_id, hash));
@@ -854,16 +699,8 @@ fn only_creator_can_remove_task_to_organization() {
 	new_test_ext().execute_with(|| {
 
 		let hash = sp_core::H256::zero();
-		// Create Static Organization name, description, vision
-		const ORG_NAME: &'static [u8] = &[10];
-		const ORG_DESC: &'static [u8] = &[10];
-		const ORG_VISION: &'static [u8] = &[10];
 
-		// Ensure organization can be created
-		assert_ok!(Dao::create_organization(Origin::signed(*ALICE), ORG_NAME.to_vec(),
-		ORG_DESC.to_vec(), ORG_VISION.to_vec()));
-
-		let org_id = Dao::organization_at_index(1).expect("must exist one org");
+		let org_id = create_organization_1();
 
 		// Throw error if another than Creator is trying to remove members
 		assert_noop!(Dao::remove_tasks(Origin::signed(*BOB), org_id, hash), Error::<Test>::NotOrganizationCreator);
