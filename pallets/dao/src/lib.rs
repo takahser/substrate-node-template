@@ -90,7 +90,9 @@ pub mod pallet {
 	use frame_system::pallet_prelude::*;
 	use frame_support::sp_runtime::traits::Hash;
 
+	use sp_core::crypto::UncheckedFrom;
 	use sp_std::vec::Vec;
+	use sp_std::vec;
 	use scale_info::TypeInfo;
 	use crate::weights::WeightInfo;
 
@@ -111,7 +113,7 @@ pub mod pallet {
 
 	/// Configure the pallet by specifying the parameters and types on which it depends.
 	#[pallet::config]
-	pub trait Config: frame_system::Config {
+	pub trait Config: frame_system::Config + pallet_did::Config  {
 		/// Because this pallet emits events, it depends on the runtime's definition of an event.
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
@@ -183,6 +185,12 @@ pub mod pallet {
 		/// DAO Organization was created [AccountID, DAO ID]
 		OrganizationCreated(T::AccountId, T::Hash),
 
+		/// DAO Owner changed [old owner id, DAO ID, new owner id]
+		OrganizationOwnerChanged(T::AccountId, T::Hash, T::AccountId),
+
+		/// DAO Organization updated [owner, org_hash]
+		OrganizationUpdated(T::AccountId, T::Hash),
+
 		/// DAO Organization was dissolved [AccountID, DAO ID]
 		OrganizationDissolved(T::AccountId, T::Hash),
 
@@ -220,8 +228,8 @@ pub mod pallet {
 		AlreadySigned,
 		/// You can't unsign from vision that that you haven't signed.
 		NotSigned,
-		/// No rights to remove. Only creator can remove an organization
-		NotOrganizationCreator,
+		/// No rights to remove. Only Owner can remove an organization
+		NotOrganizationOwner,
 		/// User is already a member of this DAO.
 		AlreadyMember,
 		/// The organization doesn't exist.
@@ -240,7 +248,9 @@ pub mod pallet {
 	// These functions materialize as "extrinsics", which are often compared to transactions.
 	// Dispatchable functions must be annotated with a weight and must return a DispatchResult.
 	#[pallet::call]
-	impl<T: Config> Pallet<T> {
+	impl<T: Config> Pallet<T>
+	where T::AccountId : UncheckedFrom<T::Hash>,
+	{
 
 		/// Function for creating a vision and publishing it on chain [origin, vision]
 		#[pallet::weight(<T as Config>::WeightInfo::create_vision(0))]
@@ -339,11 +349,42 @@ pub mod pallet {
 
 			// call public function to create org
 			let org_id = Self::new_org(&who, &name, &description, &vision)?;
+			let org_account : T::AccountId = UncheckedFrom::unchecked_from(org_id);
+			<pallet_did::Pallet<T>>::set_owner(&who, &org_account, &who);
 
 			// Emit an event.
 			Self::deposit_event(Event::OrganizationCreated(who, org_id));
 
 			Ok(())
+		}
+
+		/// Trasnfer ownership of dao to other user.
+		#[pallet::weight(<T as Config>::WeightInfo::create_organization(0))]
+		pub fn transfer_ownership(origin: OriginFor<T>, org_id: T::Hash, new_owner: T::AccountId)
+			-> DispatchResult {
+			let who = ensure_signed(origin)?;
+			let _ = Self::change_owner(&who, org_id, &new_owner)?;
+			let org_account : T::AccountId = UncheckedFrom::unchecked_from(org_id);
+			<pallet_did::Pallet<T>>::set_owner(&who, &org_account, &new_owner);
+
+			Self::deposit_event(Event::OrganizationOwnerChanged(who, org_id, new_owner));
+
+			Ok(())
+		}
+
+		/// Function for updating organization [origin, org_id, option<name>, option<description>,
+		/// option<vision>
+		#[pallet::weight(<T as Config>::WeightInfo::create_organization(0))]
+		pub fn update_organization(origin: OriginFor<T>, org_id: T::Hash, name: Option<Vec<u8>>, description: Option<Vec<u8>>, vision: Option<Vec<u8>>) -> DispatchResult {
+			// Check that the extrinsic was signed and get the signer.
+			let who = ensure_signed(origin)?;
+
+			Self::update_org(&who, org_id, name, description, vision)?;
+
+			Self::deposit_event(Event::OrganizationUpdated(who, org_id));
+
+			Ok(())
+
 		}
 
 		/// Function for adding member to an organization [origin, org_id, AccountID]
@@ -430,19 +471,8 @@ pub mod pallet {
 
 	// *** Helper functions *** //
 	impl<T:Config> Pallet<T> {
-		// helper method for testing
-		pub fn get_hash_for_dao(from_initiator: &T::AccountId, name: &[u8], description: &[u8], vision: &[u8], created_time: T::BlockNumber , last_updated: T::BlockNumber) -> T::Hash {
-			let dao = Dao::<T> {
-				name: name.to_vec(),
-				description: description.to_vec(),
-				owner: from_initiator.clone(),
-				vision: vision.to_vec(),
-				created_time,
-				last_updated,
-			};
-
-			let hash = T::Hashing::hash_of(&dao);
-			hash
+		pub fn does_organization_exist(org_id: &T::Hash) -> bool {
+			<Organizations<T>>::contains_key(org_id)
 		}
 		pub fn new_org(from_initiator: &T::AccountId, name: &[u8], description: &[u8], vision: &[u8]) -> Result<T::Hash, DispatchError> {
 			let current_block = <frame_system::Pallet<T>>::block_number();
@@ -464,11 +494,56 @@ pub mod pallet {
 			// Insert vector into Hashmap
 			<Members<T>>::insert(org_id, vec![from_initiator]);
 
+			// Insert organizations into MemberOf
+			<MemberOf<T>>::insert(&from_initiator, vec![org_id]);
+
 			// Increase organization count
 			let new_count =
 				Self::organization_count().checked_add(1).ok_or(<Error<T>>::OrganizationCountOverflow)?;
 			<OrganizationCount<T>>::put(new_count);
 			Ok(org_id)
+		}
+
+		pub fn change_owner(owner : &T::AccountId, org_id: T::Hash, new_owner : &T::AccountId) ->
+			Result<(), DispatchError> {
+
+			ensure!(Self::does_organization_exist(&org_id), Error::<T>::InvalidOrganization);
+
+			Self::is_dao_founder(owner, org_id)?;
+			Organizations::<T>::try_mutate(&org_id, |ref mut org| {
+				if let Some(org) = org {
+					org.owner = new_owner.clone();
+					org.last_updated = <frame_system::Pallet<T>>::block_number();
+					Ok(())
+				} else {
+					Err(Error::<T>::InvalidOrganization.into())
+				}
+			})
+		}
+
+		pub fn update_org(owner : &T::AccountId, org_id: T::Hash, name : Option<Vec<u8>>,
+			description: Option<Vec<u8>>, vision: Option<Vec<u8>>,) -> Result<(), DispatchError> {
+			ensure!(Self::does_organization_exist(&org_id), Error::<T>::InvalidOrganization);
+
+			Self::is_dao_founder(owner, org_id)?;
+
+			Organizations::<T>::try_mutate(&org_id, |ref mut org| {
+				if let Some(org) = org {
+					if let Some(n) = name {
+						org.name = n;
+					}
+					if let Some(d) = description {
+						org.description = d;
+					}
+					if let Some(v) = vision {
+						org.vision =v;
+					}
+					org.last_updated = <frame_system::Pallet<T>>::block_number();
+					Ok(())
+				} else {
+					Err(Error::<T>::InvalidOrganization.into())
+				}
+			})
 		}
 
 		pub fn remove_org(from_initiator: &T::AccountId, org_id : T::Hash) -> Result<(), DispatchError> {
@@ -481,20 +556,30 @@ pub mod pallet {
 			// Remove organizational instance
 			<Members<T>>::remove(org_id);
 
+
 			// Reduce organization count
 			let new_count = Self::organization_count().saturating_sub(1);
 			<OrganizationCount<T>>::put(new_count);
+
+			// Find current organizations and remove org_id from MemberOf user
+			let mut current_organizations = <Pallet<T>>::member_of(&from_initiator);
+			ensure!(current_organizations.iter().any(|a| *a == org_id), Error::<T>::InvalidOrganization);
+			current_organizations = current_organizations.into_iter().filter(|a| *a !=
+				org_id).collect();
+			// Update MemberOf
+			<MemberOf<T>>::insert(&from_initiator, &current_organizations);
 
 			Ok(())
 		}
 
 		pub fn add_member_to_organization(from_initiator: &T::AccountId, org_id: T::Hash, account: &T::AccountId ) -> Result<(), DispatchError> {
 			// Check if organization exists
-			let mut members = Self::members(org_id);
-			ensure!(!members.is_empty() , Error::<T>::InvalidOrganization);
+			ensure!(Self::does_organization_exist(&org_id), Error::<T>::InvalidOrganization);
 
 			// check if its DAO original creator
 			Self::is_dao_founder(from_initiator, org_id)?;
+
+			let mut members = Self::members(org_id);
 
 			// Check if already a member
 			ensure!(!members.contains(account), <Error<T>>::AlreadyMember);
@@ -513,8 +598,7 @@ pub mod pallet {
 
 		pub fn add_task_to_organization(from_initiator: &T::AccountId, org_id: T::Hash, task: &T::Hash ) -> Result<(), DispatchError> {
 			// Check if organization exists
-			let members = Self::members(org_id);
-			ensure!(!members.is_empty() , Error::<T>::InvalidOrganization);
+			ensure!(Self::does_organization_exist(&org_id), Error::<T>::InvalidOrganization);
 
 			// check if its DAO original creator
 			Self::is_dao_founder(from_initiator, org_id)?;
@@ -533,8 +617,8 @@ pub mod pallet {
 
 		pub fn remove_member_from_organization(from_initiator: &T::AccountId, org_id: T::Hash, account: &T::AccountId ) -> Result<(), DispatchError> {
 			// Check if organization exists
+			ensure!(Self::does_organization_exist(&org_id), Error::<T>::InvalidOrganization);
 			let mut members = <Pallet<T>>::members(org_id);
-			ensure!(!members.is_empty() , Error::<T>::InvalidOrganization);
 
 			// check if its DAO original creator
 			Self::is_dao_founder(from_initiator, org_id)?;
@@ -558,8 +642,7 @@ pub mod pallet {
 
 		pub fn remove_task_from_organization(from_initiator: &T::AccountId, org_id: T::Hash, task: &T::Hash ) -> Result<(), DispatchError> {
 			// Check if organization exists
-			let member = <Pallet<T>>::members(org_id);
-			ensure!(!member.is_empty() , Error::<T>::InvalidOrganization);
+			ensure!(Self::does_organization_exist(&org_id), Error::<T>::InvalidOrganization);
 
 			// check if its DAO original creator
 			Self::is_dao_founder(from_initiator, org_id)?;
@@ -619,10 +702,10 @@ pub mod pallet {
 
 		pub fn is_dao_founder(from_initiator: &T::AccountId, org_id: T::Hash) -> Result<bool,
 		DispatchError> {
-			let first_account = Self::members(org_id);
-			if first_account[0] == *from_initiator {
+			let org = Organizations::<T>::get(org_id).ok_or(Error::<T>::InvalidOrganization)?;
+			if org.owner == *from_initiator {
 				Ok(true)
-			} else { Err(Error::<T>::NotOrganizationCreator.into()) }
+			} else { Err(Error::<T>::NotOrganizationOwner.into()) }
 		}
 	}
 }

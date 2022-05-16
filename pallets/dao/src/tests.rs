@@ -20,6 +20,44 @@ fn last_event() -> OrgEvent {
 		.expect("Event expected")
 }
 
+fn create_organization_1() -> H256 {
+
+		// Create Static Organization name, description, vision
+		const ORG_NAME: &'static [u8] = &[10];
+		const ORG_DESC: &'static [u8] = &[10];
+		const ORG_VISION: &'static [u8] = &[10];
+
+		// Ensure organization can be created
+		assert_ok!(Dao::create_organization(Origin::signed(*ALICE), ORG_NAME.to_vec(),
+		ORG_DESC.to_vec(), ORG_VISION.to_vec()));
+		let event = last_event();
+		if let crate::Event::OrganizationCreated(_creator, org_id) = event {
+			return org_id;
+		} else {
+			assert!(false, "Last event must be OrganizationCreated");
+			return H256::zero();
+		}
+}
+
+fn create_organization_2() -> H256 {
+
+		// Create Static Organization name, description, vision
+		const ORG_NAME: &'static [u8] = &[12];
+		const ORG_DESC: &'static [u8] = &[12];
+		const ORG_VISION: &'static [u8] = &[12];
+
+		// Ensure organization can be created
+		assert_ok!(Dao::create_organization(Origin::signed(*ALICE), ORG_NAME.to_vec(),
+		ORG_DESC.to_vec(), ORG_VISION.to_vec()));
+		let event = last_event();
+		if let crate::Event::OrganizationCreated(_creator, org_id) = event {
+			return org_id;
+		} else {
+			assert!(false, "Last event must be OrganizationCreated");
+			return H256::zero();
+		}
+}
+
 #[test]
 fn can_create_vision() {
 	new_test_ext().execute_with(|| {
@@ -234,44 +272,6 @@ fn user_can_unsign_from_vision_only_if_signed_previously() {
 	});
 }
 
-fn create_organization_1() -> H256 {
-
-		// Create Static Organization name, description, vision
-		const ORG_NAME: &'static [u8] = &[10];
-		const ORG_DESC: &'static [u8] = &[10];
-		const ORG_VISION: &'static [u8] = &[10];
-
-		// Ensure organization can be created
-		assert_ok!(Dao::create_organization(Origin::signed(*ALICE), ORG_NAME.to_vec(),
-		ORG_DESC.to_vec(), ORG_VISION.to_vec()));
-		let event = last_event();
-		if let crate::Event::OrganizationCreated(_creator, org_id) = event {
-			return org_id;
-		} else {
-			assert!(false, "Last event must be OrganizationCreated");
-			return H256::zero();
-		}
-}
-
-fn create_organization_2() -> H256 {
-
-		// Create Static Organization name, description, vision
-		const ORG_NAME: &'static [u8] = &[12];
-		const ORG_DESC: &'static [u8] = &[12];
-		const ORG_VISION: &'static [u8] = &[12];
-
-		// Ensure organization can be created
-		assert_ok!(Dao::create_organization(Origin::signed(*ALICE), ORG_NAME.to_vec(),
-		ORG_DESC.to_vec(), ORG_VISION.to_vec()));
-		let event = last_event();
-		if let crate::Event::OrganizationCreated(_creator, org_id) = event {
-			return org_id;
-		} else {
-			assert!(false, "Last event must be OrganizationCreated");
-			return H256::zero();
-		}
-}
-
 #[test]
 fn can_create_an_organization() {
 	new_test_ext().execute_with(|| {
@@ -369,7 +369,7 @@ fn only_creator_can_remove_their_organization() {
 		assert_eq!(Dao::members(org_id).len(), 1);
 
 		// Ensure organization can't be removed by another member. Only creator can remove their own org
-		assert_noop!(Dao::dissolve_organization(Origin::signed(*BOB), org_id), Error::<Test>::NotOrganizationCreator);
+		assert_noop!(Dao::dissolve_organization(Origin::signed(*BOB), org_id), Error::<Test>::NotOrganizationOwner);
 
 		// Ensure the organization has not been deleted
 		assert_eq!(Dao::members(org_id).len(), 1);
@@ -401,7 +401,7 @@ fn only_creator_can_add_user_to_organization() {
 		// Ensure the length of organization is equal to 1
 		assert_eq!(Dao::members(org_id).len(), 1);
 		// Throw error if another than Creator is trying to add members
-		assert_noop!(Dao::add_members(Origin::signed(*BOB), org_id, *EVE), Error::<Test>::NotOrganizationCreator);
+		assert_noop!(Dao::add_members(Origin::signed(*BOB), org_id, *EVE), Error::<Test>::NotOrganizationOwner);
 	});
 }
 
@@ -447,7 +447,7 @@ fn only_creator_can_remove_users_from_organization() {
 		assert_ok!(Dao::add_members(Origin::signed(*ALICE), org_id, *EVE));
 
 		// When user 2 who didn't create organization tries to remove user, throw error
-		assert_noop!(Dao::remove_members(Origin::signed(*BOB), org_id, *EVE), Error::<Test>::NotOrganizationCreator);
+		assert_noop!(Dao::remove_members(Origin::signed(*BOB), org_id, *EVE), Error::<Test>::NotOrganizationOwner);
 
 	});
 }
@@ -587,6 +587,68 @@ fn user_can_not_be_removed_from_organization_that_does_not_exist() {
 	});
 }
 
+
+#[test]
+fn can_update_an_organization() {
+	new_test_ext().execute_with(|| {
+
+		let org_id = create_organization_1();
+		System::set_block_number(5);
+		assert_ok!(Dao::update_organization(Origin::signed(*ALICE), org_id, Some(vec![1, 2, 3]), Some(vec![1, 2, 3]), None));
+		assert_eq!(Dao::member_of(*ALICE)[0], org_id);
+		let event = last_event();
+		match event {
+		crate::Event::OrganizationUpdated(_creater, _org_id ) => {
+		},
+		_ => {assert!(false, "Last event must be OrganizationUpdated");}
+		}
+
+	});
+}
+
+#[test]
+fn only_owner_can_update_an_organization() {
+	new_test_ext().execute_with(|| {
+
+		let org_id = create_organization_1();
+		System::set_block_number(5);
+		assert_noop!(Dao::update_organization(Origin::signed(*EVE), org_id, Some(vec![1, 2, 3]), Some(vec![1, 2, 3]), None), Error::<Test>::NotOrganizationOwner);
+	});
+}
+
+#[test]
+fn can_transfer_ownership_of_an_organization() {
+	new_test_ext().execute_with(|| {
+
+		let org_id = create_organization_1();
+		System::set_block_number(5);
+		assert_ok!(Dao::transfer_ownership(Origin::signed(*ALICE), org_id, *EVE));
+		let event = last_event();
+		match event {
+		crate::Event::OrganizationOwnerChanged(_creater, _org_id, _new_owner ) => {
+		},
+		_ => {assert!(false, "Last event must be OrganizationOwnerChanged");}
+		}
+
+		// only owner can change org
+		System::set_block_number(7);
+		assert_noop!(Dao::update_organization(Origin::signed(*ALICE), org_id, Some(vec![1, 2, 3]), Some(vec![1, 2, 3]), None), Error::<Test>::NotOrganizationOwner);
+
+	});
+}
+
+#[test]
+fn only_owner_can_transfer_ownership_of_an_organization() {
+	new_test_ext().execute_with(|| {
+
+		let org_id = create_organization_1();
+		System::set_block_number(5);
+		assert_noop!(Dao::transfer_ownership(Origin::signed(*EVE), org_id, *EVE),
+		Error::<Test>::NotOrganizationOwner);
+
+	});
+}
+
 // < -------- Integration Tests ------------->
 
 #[test]
@@ -635,7 +697,7 @@ fn only_creator_can_add_task_to_organization() {
 		let org_id = create_organization_1();
 
 		// Throw error if another than Creator is trying to add members
-		assert_noop!(Dao::add_tasks(Origin::signed(*BOB), org_id, hash), Error::<Test>::NotOrganizationCreator);
+		assert_noop!(Dao::add_tasks(Origin::signed(*BOB), org_id, hash), Error::<Test>::NotOrganizationOwner);
 	});
 }
 
@@ -703,7 +765,7 @@ fn only_creator_can_remove_task_to_organization() {
 		let org_id = create_organization_1();
 
 		// Throw error if another than Creator is trying to remove members
-		assert_noop!(Dao::remove_tasks(Origin::signed(*BOB), org_id, hash), Error::<Test>::NotOrganizationCreator);
+		assert_noop!(Dao::remove_tasks(Origin::signed(*BOB), org_id, hash), Error::<Test>::NotOrganizationOwner);
 	});
 }
 
