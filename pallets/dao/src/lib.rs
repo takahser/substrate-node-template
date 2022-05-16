@@ -359,7 +359,7 @@ pub mod pallet {
 		}
 
 		/// Trasnfer ownership of dao to other user.
-		#[pallet::weight(<T as Config>::WeightInfo::create_organization(0))]
+		#[pallet::weight(<T as Config>::WeightInfo::transfer_ownership(0))]
 		pub fn transfer_ownership(origin: OriginFor<T>, org_id: T::Hash, new_owner: T::AccountId)
 			-> DispatchResult {
 			let who = ensure_signed(origin)?;
@@ -374,7 +374,7 @@ pub mod pallet {
 
 		/// Function for updating organization [origin, org_id, option<name>, option<description>,
 		/// option<vision>
-		#[pallet::weight(<T as Config>::WeightInfo::create_organization(0))]
+		#[pallet::weight(<T as Config>::WeightInfo::update_organization(0))]
 		pub fn update_organization(origin: OriginFor<T>, org_id: T::Hash, name: Option<Vec<u8>>, description: Option<Vec<u8>>, vision: Option<Vec<u8>>) -> DispatchResult {
 			// Check that the extrinsic was signed and get the signer.
 			let who = ensure_signed(origin)?;
