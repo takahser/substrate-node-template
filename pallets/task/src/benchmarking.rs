@@ -224,6 +224,7 @@ benchmarks! {
 		let _ = PalletTask::<T>::create_task(RawOrigin::Signed(caller_create.clone()).into(), title, specification, budget, x.into());
 		let hash_task = PalletTask::<T>::tasks_owned(&caller_create)[0];
 		let _ = PalletTask::<T>::start_task(RawOrigin::Signed(caller_complete.clone()).into(), hash_task.clone());
+		let _ = PalletTask::<T>::complete_task(RawOrigin::Signed(caller_complete.clone()).into(), hash_task.clone());
 
 	}: reject_task(RawOrigin::Signed(caller_complete.clone()), hash_task)
 		/* the code to be benchmarked */
