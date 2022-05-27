@@ -49,14 +49,14 @@
 //!
 //! - `create_task` - Function used to create a new task.
 //!
-//! - `update_task` - Function used to update already existing task. 
-//! 	Only the creator of the task has the update rights. 
-//! 
+//! - `update_task` - Function used to update already existing task.
+//! 	Only the creator of the task has the update rights.
+//!
 //! - `start_task` - Function used to start already existing task.
 //!
 //! - `complete_task` - Function used to complete a task.
 //!
-//! - `accept_task` - Function used to accept completed task. 
+//! - `accept_task` - Function used to accept completed task.
 //! 	After the task is accepted, its data is removed from storage.
 //!
 //! ## Related Modules
@@ -81,10 +81,10 @@ pub mod weights;
 #[frame_support::pallet]
 pub mod pallet {
 	use crate::TaskStatus::Created; //TODO: Better import
-	use frame_support::{dispatch::DispatchResult, pallet_prelude::*, traits::UnixTime};
+	use frame_support::{dispatch::DispatchResult, pallet_prelude::*, traits::UnixTime, PalletId};
 	use frame_system::pallet_prelude::*;
 	use frame_support::{
-		sp_runtime::traits::{Hash, SaturatedConversion},
+		sp_runtime::traits::{Hash, SaturatedConversion, AccountIdConversion},
 		traits::{Currency, tokens::ExistenceRequirement},
 		transactional};
 	use scale_info::TypeInfo;
@@ -142,6 +142,9 @@ pub mod pallet {
 
 		/// WeightInfo provider.
 		type WeightInfo: WeightInfo;
+
+		#[pallet::constant]
+		type PalletId: Get<PalletId>;
 	}
 
 	#[pallet::pallet]
@@ -204,7 +207,7 @@ pub mod pallet {
 		NoPermissionToComplete,
 		/// You are not allowed to update this task. Task is already in progress.
 		NoPermissionToUpdate,
-		// Only completed tasks can be rejected.
+		/// Only completed tasks can be rejected.
 		OnlyCompletedTaskAreRejected,
 		/// This account has no Profile yet.
 		NoProfile,
@@ -212,7 +215,6 @@ pub mod pallet {
 		IncorrectDeadlineTimestamp,
 		/// Only Task creator can update the task.
 		OnlyInitiatorUpdatesTask,
-        ProfileAddReputationFailed, // TODO: remove this when pallet_profile returns DispatchError
 	}
 
 	// Dispatchable functions allows users to interact with the pallet and invoke state changes.
@@ -230,9 +232,9 @@ pub mod pallet {
 			// Update storage.
 			let task_id = Self::new_task(&signer, &title, &specification, &budget, deadline)?;
 
-			// TODO: Check if user has balance to create task
-			// T::Currency::reserve(&signer, budget).map_err(|_| "locker can't afford to lock the amount requested")?;
-
+			let sub_account = Self::account_id(&task_id);
+			<T as self::Config>::Currency::transfer(&signer, &sub_account, budget,
+				ExistenceRequirement::KeepAlive)?;
 			// Emit a Task Created Event.
 			Self::deposit_event(Event::TaskCreated(signer, task_id));
 			// Return a successful DispatchResultWithPostInfo
@@ -240,6 +242,7 @@ pub mod pallet {
 		}
 
 		/// Function call that updates a created task.  [ origin, specification, budget, deadline]
+		/// Note: budget specified in this call is added to budget provided in create_task() call.
 		#[pallet::weight(<T as Config>::WeightInfo::update_task(0,0))]
 		pub fn update_task(origin: OriginFor<T>, task_id: T::Hash, title: Vec<u8>, specification: Vec<u8>, budget: BalanceOf<T>, deadline: u64) -> DispatchResultWithPostInfo {
 
@@ -249,8 +252,9 @@ pub mod pallet {
 			// Update storage.
 			let _task_id = Self::update_created_task(&signer, &task_id, &title, &specification, &budget, deadline)?;
 
-			// TODO: Check if user has balance to update task
-			// T::Currency::reserve(&signer, budget).map_err(|_| "locker can't afford to lock the amount requested")?;
+			let sub_account = Self::account_id(&task_id);
+			<T as self::Config>::Currency::transfer(&signer, &sub_account, budget,
+				ExistenceRequirement::KeepAlive)?;
 
 			// Emit a Task Updated Event.
 			Self::deposit_event(Event::TaskUpdated(signer, task_id));
@@ -298,6 +302,11 @@ pub mod pallet {
 			// Check that the extrinsic was signed and get the signer.
 			let signer = ensure_signed(origin)?;
 
+			let task = Self::tasks(&task_id).ok_or(<Error<T>>::TaskNotExist)?;
+			// pay volunteer
+			let sub_account = Self::account_id(&task_id);
+			<T as self::Config>::Currency::transfer(&sub_account, &task.volunteer, task.budget,
+				ExistenceRequirement::AllowDeath)?;
 			// Complete task and update storage.
 			Self::delete_task(&signer, &task_id)?;
 
@@ -335,6 +344,15 @@ pub mod pallet {
 				if let Some(task) = task {
 					let deadline_duration = Duration::from_millis(task.deadline.saturated_into::<u64>());
 					if deadline_duration < current_timestamp {
+						// return balance back to initiator
+						let sub_account = Self::account_id(&th);
+						if let Err(e) = <T as self::Config>::Currency::transfer(&sub_account, &task.initiator, task.budget,
+							ExistenceRequirement::AllowDeath) {
+							log::error!("balance transfer from task sub_account {:?} to initiator
+							{:?}
+								failed with error {:?}", sub_account, task.initiator, e);
+							continue;
+						}
 						if let Ok(()) = Self::delete_task(&task.initiator, &th) {
 							weight += 10_000;
 						}
@@ -399,7 +417,7 @@ pub mod pallet {
 
 			// Check if task is in created status. Tasks can be updated only before work has been started.
 			ensure!(TaskStatus::Created == task.status, <Error<T>>::NoPermissionToUpdate);
-			
+
 			// Ensure deadline is in the future
 			let deadline_duration = Duration::from_millis(task.deadline.saturated_into::<u64>());
 			ensure!(T::Time::now() < deadline_duration, Error::<T>::IncorrectDeadlineTimestamp);
@@ -497,12 +515,10 @@ pub mod pallet {
 				Err(())
 			}).map_err(|_| <Error<T>>::TaskNotExist)?;
 
-			// Transfer balance to volunteer
-			let volunteer = task.volunteer.clone();
-			let budget = task.budget;
+			// // Transfer balance to volunteer
+			// let volunteer = task.volunteer.clone();
+			// let budget = task.budget;
 			task.status = TaskStatus::Accepted;
-			Self::transfer_balance(task_initiator, &volunteer, budget)?;
-
 			// Update task state
 			<Tasks<T>>::insert(task_id, task);
 
@@ -521,7 +537,7 @@ pub mod pallet {
 
 		// Task can be rejected by the creator, which places the task back into progress.
 		pub fn reject_completed_task(task_initiator: &T::AccountId, task_id: &T::Hash) -> Result<(), DispatchError> {
-			
+
 			// Check if task exists
 			let mut task = Self::tasks(&task_id).ok_or(<Error<T>>::TaskNotExist)?;
 
@@ -564,10 +580,8 @@ pub mod pallet {
 			}
 		}
 
-		// Function to transfer balance from one account to another
-		#[transactional]
-		pub fn transfer_balance(task_initiator: &T::AccountId, task_volunteer: &T::AccountId, budget: BalanceOf<T>) -> Result<(),  DispatchError> {
-			<T as self::Config>::Currency::transfer(task_initiator, task_volunteer, budget, ExistenceRequirement::KeepAlive)
+		pub fn account_id(task_id: &T::Hash) -> T::AccountId {
+			T::PalletId::get().into_sub_account(task_id)
 		}
 
 		// Handles reputation update for profiles
@@ -578,8 +592,8 @@ pub mod pallet {
 
 			// Ensure that reputation is added only when task is in status Accepted
 			if task.status == TaskStatus::Accepted {
-				pallet_profile::Pallet::<T>::add_reputation(&task.initiator).map_err(|_| Error::<T>::ProfileAddReputationFailed)?;
-				pallet_profile::Pallet::<T>::add_reputation(&task.volunteer).map_err(|_| Error::<T>::ProfileAddReputationFailed)?;
+				pallet_profile::Pallet::<T>::add_reputation(&task.initiator)?;
+				pallet_profile::Pallet::<T>::add_reputation(&task.volunteer)?;
 			}
 
 			Ok(())

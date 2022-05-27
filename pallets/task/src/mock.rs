@@ -1,6 +1,6 @@
 
 use crate as pallet_task;
-use frame_support::parameter_types;
+use frame_support::{parameter_types, PalletId};
 use frame_system as system;
 use sp_core::H256;
 use sp_runtime::{
@@ -93,6 +93,7 @@ impl pallet_profile::Config for Test {
 parameter_types! {
 	// One can owned at most 77 tasks
 	pub const MaxTasksOwned: u32 = 77;
+	pub TestPalletID : PalletId = PalletId(*b"task_pal");
 }
 
 impl pallet_task::Config for Test {
@@ -101,13 +102,14 @@ impl pallet_task::Config for Test {
 	type MaxTasksOwned = MaxTasksOwned;
 	type Time = Time;
 	type WeightInfo = ();
+	type PalletId = TestPalletID;
 }
 
 pub(crate) fn new_test_ext() -> sp_io::TestExternalities {
 	let mut t = frame_system::GenesisConfig::default().build_storage::<Test>().unwrap();
 	GenesisConfig {
 		balances: BalancesConfig {
-			balances: vec![(1,  10), (2,  10)]
+			balances: vec![(1,  1000), (2,  1000), (10, 1000)]
 		},
 		..Default::default()
 	}

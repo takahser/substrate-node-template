@@ -1,7 +1,6 @@
 use crate::TaskStatus;
 use crate::{mock::*, Error};
 use frame_support::{assert_noop, assert_ok, traits::{UnixTime, Hooks}};
-use pallet_balances::Error as BalancesError;
 
 pub const USERNAME:[u8; 1] = [7];
 pub const TITLE:[u8; 1] = [1];
@@ -174,11 +173,11 @@ fn task_can_be_updated_after_it_is_created(){
 		vec1.push(3);
 
 		assert_ok!(Task::create_task(Origin::signed(10), TITLE.to_vec(), vec1, 1, get_deadline()));
-		
+
 		// Get task through the hash
 		let hash = Task::tasks_owned(10)[0];
 		let task = Task::tasks(hash).expect("should found the task");
-		
+
 		// assert the budget is correct
 		assert_eq!(task.budget, 1);
 
@@ -209,13 +208,13 @@ fn task_can_be_updated_only_by_one_who_created_it(){
 		vec1.push(3);
 
 		assert_ok!(Task::create_task(Origin::signed(10), TITLE.to_vec(), vec1, 1, get_deadline()));
-		
+
 		// Get task through the hash
 		let hash = Task::tasks_owned(10)[0];
-		
+
 		// Throw error when someone other than creator tries to update task
 		assert_noop!(Task::update_task(Origin::signed(7), hash, TITLE.to_vec(), vec2, 7, get_deadline()), Error::<Test>::OnlyInitiatorUpdatesTask);
-	
+
 	});
 }
 
@@ -231,8 +230,8 @@ fn task_can_be_updated_only_after_it_has_been_created(){
 
 		let vec2 = Vec::new();
 		vec1.push(3);
-		
-		// Ensure task can be created 
+
+		// Ensure task can be created
 		assert_ok!(Task::create_task(Origin::signed(10), TITLE.to_vec(), vec1, 1, get_deadline()));
 
 		// Get task through the hash
@@ -240,11 +239,11 @@ fn task_can_be_updated_only_after_it_has_been_created(){
 
 		// Ensure task is started by new current_owner (user 2)
 		assert_ok!(Task::start_task(Origin::signed(2), hash));
-		
-		
+
+
 		// Throw error when someone other than creator tries to update task
 		assert_noop!(Task::update_task(Origin::signed(10), hash, TITLE.to_vec(), vec2, 7, get_deadline()), Error::<Test>::NoPermissionToUpdate);
-	
+
 	});
 }
 
@@ -509,7 +508,7 @@ fn task_can_be_rejected_by_creator(){
 
 		// Task is rejected by creator
 		assert_ok!(Task::reject_task(Origin::signed(1), hash));
-		
+
 		// Assert that the status is back in progress and, owner is the volunteer
 		let hash = Task::tasks_owned(2)[0];
 		let task = Task::tasks(hash).expect("should found the task");
@@ -518,18 +517,6 @@ fn task_can_be_rejected_by_creator(){
 
 	});
 }
-
-#[test]
-fn transfer_balance_works(){
-	new_test_ext().execute_with( || {
-
-		// Transfer balance works using Mock
-        // initially use has 10 units
-		assert_ok!(Task::transfer_balance(&1, &2, 7));
-		assert_noop!(Task::transfer_balance(&1, &2, 7), BalancesError::<Test>::InsufficientBalance);
-	});
-}
-
 
 // <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<  Integration tests  >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -591,7 +578,7 @@ fn only_add_reputation_when_task_has_been_accepted(){
 
 		// Ensure task can be accepted
 		assert_ok!(Task::accept_task(Origin::signed(1), hash));
-		
+
 		// Reputation should remain 0 since the task was removed without being completed
 		// TODO: Make sure that user creating a task is not the same as the one completing it
 		let profile = Profile::profiles(1).expect("should find the profile");

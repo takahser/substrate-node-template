@@ -201,7 +201,7 @@ pub mod pallet {
 	// ** Helper internal functions ** //
 	impl<T:Config> Pallet<T> {
 		// Generates initial Profile.
-		pub fn generate_profile(owner: &T::AccountId, username: Vec<u8>, interests_vec: Vec<u8>) -> Result<T::Hash, Error<T>> {
+		pub fn generate_profile(owner: &T::AccountId, username: Vec<u8>, interests_vec: Vec<u8>) -> Result<T::Hash, DispatchError> {
 
 			// Check if profile already exists for owner
 			ensure!(!Profiles::<T>::contains_key(&owner), Error::<T>::ProfileAlreadyCreated);
@@ -232,7 +232,7 @@ pub mod pallet {
 		}
 
 		// Changes existing profile
-		pub fn change_profile(owner: &T::AccountId, new_username: Vec<u8>, new_interests: Vec<u8>) -> Result<T::Hash, Error<T>> {
+		pub fn change_profile(owner: &T::AccountId, new_username: Vec<u8>, new_interests: Vec<u8>) -> Result<T::Hash, DispatchError> {
 
 			// Ensure that only owner can update profile
 			let mut profile = Self::profiles(owner).ok_or(<Error<T>>::NoUpdateAuthority)?;
@@ -253,7 +253,7 @@ pub mod pallet {
 		}
 
 		// Public function that deletes a user profile
-		pub fn delete_profile(owner: &T::AccountId) -> Result<(), Error<T>> {
+		pub fn delete_profile(owner: &T::AccountId) -> Result<(), DispatchError> {
 
 			// Ensure that only creator of profile can delete it
 			Self::profiles(owner).ok_or(<Error<T>>::NoDeletionAuthority)?;
@@ -269,7 +269,7 @@ pub mod pallet {
 		}
 
 		// Public function that adds reputation to a profile
-		pub fn add_reputation(owner: &T::AccountId) -> Result<(), Error<T>> {
+		pub fn add_reputation(owner: &T::AccountId) -> Result<(), DispatchError> {
 
 			// Get current profile
 			let mut profile = Self::profiles(owner).ok_or(<Error<T>>::NoUpdateAuthority)?;
@@ -284,7 +284,7 @@ pub mod pallet {
 		}
 
 		// Public function that check if user has a profile
-		pub fn has_profile(owner: &T::AccountId) -> Result<bool, Error<T>>  {
+		pub fn has_profile(owner: &T::AccountId) -> Result<bool, DispatchError>  {
 
 			// Check if an account has a profile
 			Self::profiles(owner).ok_or(<Error<T>>::NoProfileCreated)?;
