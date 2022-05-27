@@ -1,5 +1,6 @@
 use crate::TaskStatus;
 use crate::{mock::*, Error};
+use frame_support::traits::fungible::Inspect;
 use frame_support::{assert_noop, assert_ok, traits::{UnixTime, Hooks}};
 
 pub const USERNAME:[u8; 1] = [7];
@@ -41,6 +42,25 @@ fn create_new_task(){
 
 		// Ensure new task can be created with [signer, specification, budget, deadline]
 		assert_ok!(Task::create_task(Origin::signed(1), TITLE.to_vec(), vec, 7, get_deadline()));
+	});
+}
+
+#[test]
+fn fund_transfer_on_create_task(){
+	new_test_ext().execute_with( || {
+
+		// Profile is necessary for task creation
+		assert_ok!(Profile::create_profile(Origin::signed(1), USERNAME.to_vec(), Vec::new()));
+
+		let mut vec = Vec::new();
+		vec.push(2);
+
+		assert_eq!(Balances::balance(&1), 1000);
+		// Ensure new task can be created with [signer, specification, budget, deadline]
+		assert_ok!(Task::create_task(Origin::signed(1), TITLE.to_vec(), vec, 7, get_deadline()));
+		assert_eq!(Balances::balance(&1), 993);
+		let task_id = Task::tasks_owned(&1)[0];
+		assert_eq!(Balances::balance(&Task::account_id(&task_id)), 7);
 	});
 }
 
@@ -379,6 +399,37 @@ fn only_creator_accepts_task(){
 		// Ensure task is accepted by task creator (user 1)
 		assert_noop!(Task::accept_task(Origin::signed(2), hash), Error::<Test>::OnlyInitiatorAcceptsTask);
 		assert_ok!(Task::accept_task(Origin::signed(1), hash));
+	});
+}
+
+#[test]
+fn volunteer_gets_paid_on_task_completion(){
+	new_test_ext().execute_with( || {
+
+		// Profile is necessary for task creation
+		assert_ok!(Profile::create_profile(Origin::signed(1), USERNAME.to_vec(), Vec::new()));
+		assert_ok!(Profile::create_profile(Origin::signed(2), USERNAME.to_vec(), Vec::new()));
+
+		let mut vec1 = Vec::new();
+		vec1.push(2);
+
+		// Ensure new task can be created with [signer, specification, budget]
+		assert_ok!(Task::create_task(Origin::signed(1), TITLE.to_vec(), vec1, 7, get_deadline()));
+
+		let hash = Task::tasks_owned(1)[0];
+		// Ensure task is started by new current_owner (user 2)
+		assert_ok!(Task::start_task(Origin::signed(2), hash));
+
+
+		// Ensure task is completed by current current_owner (user 2)
+		assert_ok!(Task::complete_task(Origin::signed(2), hash));
+
+		// Ensure task is accepted by task creator (user 1)
+		// User 2 gets fund for completing task after it is accepted by user 1
+		assert_eq!(Balances::balance(&2), 1000);
+		assert_ok!(Task::accept_task(Origin::signed(1), hash));
+		assert_eq!(Balances::balance(&2), 1007);
+
 	});
 }
 
