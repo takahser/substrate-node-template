@@ -6,6 +6,7 @@
 #[cfg(feature = "std")]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
+use frame_support::PalletId;
 use pallet_grandpa::{
 	fg_primitives, AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList,
 };
@@ -274,6 +275,7 @@ impl pallet_sudo::Config for Runtime {
 parameter_types! {
 	// Max tasks per user.
 	pub const MaxTasksOwned: u32 = 77;
+	pub TaskPalletID: PalletId = PalletId(*b"task_pal");
 }
 
 // Configure the pallet-task.
@@ -283,6 +285,7 @@ impl pallet_task::Config for Runtime {
 	type MaxTasksOwned = MaxTasksOwned;
 	type Time = Timestamp;
 	type WeightInfo = pallet_task::weights::SubstrateWeight<Runtime>;
+	type PalletId = TaskPalletID;
 }
 
 // Configure the pallet-dao.
