@@ -48,16 +48,37 @@
 //! ### Public Functions
 //!
 //! - `create_task` - Function used to create a new task.
+//! 	Inputs: 
+//! 		- title: Vec<u8>, 
+//! 		- specification: Vec<u8>, 
+//! 		- budget: BalanceOf<T>, 
+//! 		- deadline: u64
 //!
 //! - `update_task` - Function used to update already existing task.
+//! 	Inputs: 
+//! 		- task_id: T::Hash,
+//! 		- title: Vec<u8>,
+//! 		- specification: Vec<u8>,
+//! 		- budget: BalanceOf<T>,
+//! 		- deadline: u64
 //! 	Only the creator of the task has the update rights.
 //!
 //! - `start_task` - Function used to start already existing task.
-//!
+//! 	Inputs:
+//! 		- task_id: T::Hash,
+//! 		
 //! - `complete_task` - Function used to complete a task.
+//! 	Inputs:
+//! 		- task_id: T::Hash,
 //!
 //! - `accept_task` - Function used to accept completed task.
+//! 	Inputs:
+//! 		- task_id: T::Hash,
 //! 	After the task is accepted, its data is removed from storage.
+//! 
+//! - `reject_task` - Function used to reject an already completed task.
+//! 	Inputs: 
+//! 	- task_id: T::Hash,
 //!
 //! ## Related Modules
 //!
