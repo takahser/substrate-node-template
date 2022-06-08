@@ -423,6 +423,53 @@ fn task_can_only_be_finished_by_the_user_who_started_it(){
 	});
 }
 
+#[test]
+fn task_can_be_removed_by_owner(){
+	new_test_ext().execute_with( || {
+
+		assert_ok!(Profile::create_profile(Origin::signed(1), USERNAME.to_vec(), Vec::new()));
+
+		let mut vec1 = Vec::new();
+		vec1.push(2);
+
+		// Ensure new task can be created with [signer, specification, budget, deadline]
+		assert_ok!(Task::create_task(Origin::signed(1), TITLE.to_vec(), vec1, 7, get_deadline()));
+
+		// Ensure that task can't be started once its started
+		let hash = Task::tasks_owned(1)[0];
+		
+		// Ensure another user can't remove the task
+		assert_noop!(Task::remove_task(Origin::signed(2), hash), Error::<Test>::NoPermissionToRemove);
+		
+		// Ensure the task can be removed
+		assert_ok!(Task::remove_task(Origin::signed(1), hash));
+		assert_eq!(Task::task_count(), 0);
+
+	});
+}
+
+#[test]
+fn task_can_be_removed_only_when_status_is_created(){
+	new_test_ext().execute_with( || {
+
+		assert_ok!(Profile::create_profile(Origin::signed(1), USERNAME.to_vec(), Vec::new()));
+
+		let mut vec1 = Vec::new();
+		vec1.push(2);
+
+		// Ensure new task can be created with [signer, specification, budget, deadline]
+		assert_ok!(Task::create_task(Origin::signed(1), TITLE.to_vec(), vec1, 7, get_deadline()));
+
+		// Ensure that task can't be started once its started
+		let hash = Task::tasks_owned(1)[0];
+		assert_ok!(Task::start_task(Origin::signed(2), hash));
+		
+		// Ensure another user can't remove the task
+		assert_noop!(Task::remove_task(Origin::signed(2), hash), Error::<Test>::NoPermissionToRemove);
+		
+	});
+}
+
 
 #[test]
 fn only_creator_accepts_task(){

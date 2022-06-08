@@ -65,6 +65,10 @@
 //! 		- deadline: u64
 //! 	Only the creator of the task has the update rights.
 //!
+//! - `remove_task` - Function used to remove an already existing task.
+//! 	Inputs:
+//! 		- task_id: T::Hash,
+//! 
 //! - `start_task` - Function used to start already existing task.
 //! 	Inputs:
 //! 		- task_id: T::Hash,
@@ -211,6 +215,9 @@ pub mod pallet {
 
 		/// Task rejected by owner [AccountID, hash id]
 		TaskRejected(T::AccountId, T::Hash),
+
+		/// Task deleted by owner [AccountID, hash id]
+		TaskRemoved(T::AccountId, T::Hash),
 	}
 
 	// Errors inform users that something went wrong.
@@ -232,6 +239,8 @@ pub mod pallet {
 		NoPermissionToUpdate,
 		/// You don't have permission to start a task that you have created.
 		NoPermissionToStart,
+		/// You don't have permission to delete this task.
+		NoPermissionToRemove,
 		/// Only completed tasks can be rejected.
 		OnlyCompletedTaskAreRejected,
 		/// This account has no Profile yet.
@@ -290,6 +299,23 @@ pub mod pallet {
 			Ok(().into())
 		}
 
+		/// Function that deletes a task by task owner. [origin, task_id]
+		#[pallet::weight(<T as Config>::WeightInfo::start_task(0,0))]
+		pub fn remove_task(origin: OriginFor<T>, task_id: T::Hash) -> DispatchResult {
+
+			// Check that the extrinsic was signed and get the signer.
+			let signer = ensure_signed(origin)?;
+
+			// Assign task and update storage.
+			Self::delete_task(&signer, &task_id)?;
+
+			// Emit a Task Assigned Event.
+			Self::deposit_event(Event::TaskRemoved(signer, task_id));
+
+			Ok(())
+		}
+		
+
 		/// Function call that starts a task by assigning new task owner. [origin, task_id]
 		#[pallet::weight(<T as Config>::WeightInfo::start_task(0,0))]
 		pub fn start_task(origin: OriginFor<T>, task_id: T::Hash) -> DispatchResult {
@@ -338,8 +364,8 @@ pub mod pallet {
 			<T as self::Config>::Currency::transfer(&sub_account, &task.volunteer, task.budget,
 				ExistenceRequirement::AllowDeath)?;
 
-			// Delete task and update storage.
-			Self::delete_task(&signer, &task_id)?;
+			// Accept task and update storage.
+			Self::accept_completed_task(&signer, &task_id)?;
 
 			// Emit a Task Removed Event.
 			Self::deposit_event(Event::TaskAccepted(signer, task_id));
@@ -537,7 +563,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		pub fn delete_task(task_initiator: &T::AccountId, task_id: &T::Hash) -> Result<(), DispatchError> {
+		pub fn accept_completed_task(task_initiator: &T::AccountId, task_id: &T::Hash) -> Result<(), DispatchError> {
 			
 			// Check if task exists
 			let mut task = Self::tasks(&task_id).ok_or(<Error<T>>::TaskNotExist)?;
@@ -604,6 +630,28 @@ pub mod pallet {
 			<TasksOwned<T>>::try_mutate(task_volunteer, |vec| {
 				vec.try_push(*task_id)
 			}).map_err(|_| <Error<T>>::ExceedMaxTasksOwned)?;
+
+			Ok(())
+		}
+
+
+		pub fn delete_task(task_initiator: &T::AccountId, task_id: &T::Hash) -> Result<(), DispatchError> {
+
+			// Check if task exists
+			let task = Self::tasks(&task_id).ok_or(<Error<T>>::TaskNotExist)?;
+
+			// Check if the owner is the one who created task
+			ensure!(Self::is_task_initiator(task_id, task_initiator)?, <Error<T>>::NoPermissionToRemove);
+
+			// Ensure that only Created Task can be deleted
+			ensure!(TaskStatus::Created == task.status, <Error<T>>::NoPermissionToRemove);
+
+			// remove task from storage
+			<Tasks<T>>::remove(task_id);
+
+			// Reduce task count
+			let new_count = Self::task_count().saturating_sub(1);
+			<TaskCount<T>>::put(new_count);
 
 			Ok(())
 		}
