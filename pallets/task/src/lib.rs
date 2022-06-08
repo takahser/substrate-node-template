@@ -257,12 +257,14 @@ pub mod pallet {
 			// Update storage.
 			let task_id = Self::new_task(&signer, &title, &specification, &budget, deadline)?;
 
+			// Transfer balance amount to escrow account
 			let sub_account = Self::account_id(&task_id);
 			<T as self::Config>::Currency::transfer(&signer, &sub_account, budget,
 				ExistenceRequirement::KeepAlive)?;
+
 			// Emit a Task Created Event.
 			Self::deposit_event(Event::TaskCreated(signer, task_id));
-			// Return a successful DispatchResultWithPostInfo
+
 			Ok(().into())
 		}
 
@@ -277,13 +279,14 @@ pub mod pallet {
 			// Update storage.
 			let _task_id = Self::update_created_task(&signer, &task_id, &title, &specification, &budget, deadline)?;
 
+			// Update balance of escrow account
 			let sub_account = Self::account_id(&task_id);
 			<T as self::Config>::Currency::transfer(&signer, &sub_account, budget,
 				ExistenceRequirement::KeepAlive)?;
 
 			// Emit a Task Updated Event.
 			Self::deposit_event(Event::TaskUpdated(signer, task_id));
-			// Return a successful DispatchResultWithPostInfo
+
 			Ok(().into())
 		}
 
@@ -327,12 +330,15 @@ pub mod pallet {
 			// Check that the extrinsic was signed and get the signer.
 			let signer = ensure_signed(origin)?;
 
+			// Check if task exists 
 			let task = Self::tasks(&task_id).ok_or(<Error<T>>::TaskNotExist)?;
-			// pay volunteer
+
+			// Transfer escrow funds to volunteer
 			let sub_account = Self::account_id(&task_id);
 			<T as self::Config>::Currency::transfer(&sub_account, &task.volunteer, task.budget,
 				ExistenceRequirement::AllowDeath)?;
-			// Complete task and update storage.
+
+			// Delete task and update storage.
 			Self::delete_task(&signer, &task_id)?;
 
 			// Emit a Task Removed Event.
@@ -460,6 +466,7 @@ pub mod pallet {
 		}
 
 		pub fn assign_task(volunteer: &T::AccountId, task_id: &T::Hash) -> Result<(), DispatchError> {
+			
 			// Check if task exists
 			let mut task = Self::tasks(&task_id).ok_or(<Error<T>>::TaskNotExist)?;
 
@@ -528,6 +535,7 @@ pub mod pallet {
 		}
 
 		pub fn delete_task(task_initiator: &T::AccountId, task_id: &T::Hash) -> Result<(), DispatchError> {
+			
 			// Check if task exists
 			let mut task = Self::tasks(&task_id).ok_or(<Error<T>>::TaskNotExist)?;
 
@@ -543,11 +551,8 @@ pub mod pallet {
 				Err(())
 			}).map_err(|_| <Error<T>>::TaskNotExist)?;
 
-			// // Transfer balance to volunteer
-			// let volunteer = task.volunteer.clone();
-			// let budget = task.budget;
-			task.status = TaskStatus::Accepted;
 			// Update task state
+			task.status = TaskStatus::Accepted;
 			<Tasks<T>>::insert(task_id, task);
 
 			// Reward reputation points to profiles who created/completed a task
@@ -607,7 +612,8 @@ pub mod pallet {
 				None => Err(<Error<T>>::TaskNotExist.into())
 			}
 		}
-
+		
+		// Function that generates escrow account based on TaskID
 		pub fn account_id(task_id: &T::Hash) -> T::AccountId {
 			T::PalletId::get().into_sub_account(task_id)
 		}
