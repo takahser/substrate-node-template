@@ -382,6 +382,27 @@ fn the_volunteer_is_different_from_task_creator(){
 
 
 #[test]
+fn task_can_only_be_started_once(){
+	new_test_ext().execute_with( || {
+
+		assert_ok!(Profile::create_profile(Origin::signed(1), USERNAME.to_vec(), Vec::new()));
+
+		let mut vec1 = Vec::new();
+		vec1.push(2);
+
+		// Ensure new task can be created with [signer, specification, budget, deadline]
+		assert_ok!(Task::create_task(Origin::signed(1), TITLE.to_vec(), vec1, 7, get_deadline()));
+
+		// Ensure that task can't be started once its started
+		let hash = Task::tasks_owned(1)[0];
+		assert_ok!(Task::start_task(Origin::signed(2), hash));
+		assert_noop!(Task::start_task(Origin::signed(2), hash), Error::<Test>::NoPermissionToStart);
+
+	});
+}
+
+
+#[test]
 fn only_creator_accepts_task(){
 	new_test_ext().execute_with( || {
 

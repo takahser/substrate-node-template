@@ -473,6 +473,9 @@ pub mod pallet {
 			// Volunteer must be different than task Initiator
 			ensure!(!Self::is_task_initiator(task_id, volunteer)?, <Error<T>>::NoPermissionToStart);
 
+			// Ensure that only Created Task can be started
+			ensure!(TaskStatus::Created == task.status, <Error<T>>::NoPermissionToStart);
+
 			// Remove task ownership from previous owner
 			let prev_owner = task.current_owner.clone();
 			<TasksOwned<T>>::try_mutate(&prev_owner, |owned| {
