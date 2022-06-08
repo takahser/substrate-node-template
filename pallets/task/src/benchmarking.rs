@@ -160,7 +160,7 @@ benchmarks! {
 	remove_task {
 		/* setup initial state */
 		let task_creator: T::AccountId = whitelisted_caller();
-		let volunteer: T::AccountId = whitelisted_caller();
+		let volunteer: T::AccountId = account("volunteer", 0, SEED);
 
 		// Populate data fields
 		let s in 1 .. u8::MAX.into(); // max bytes for specification
@@ -174,12 +174,12 @@ benchmarks! {
 		let _ = PalletTask::<T>::create_task(RawOrigin::Signed(task_creator.clone()).into(), title, specification, budget, x.into());
 		let hash_task = PalletTask::<T>::tasks_owned(&task_creator)[0];
 
-	}: remove_task(RawOrigin::Signed(volunteer.clone()), hash_task)
+	}: remove_task(RawOrigin::Signed(task_creator.clone()), hash_task)
 		/* the code to be benchmarked */
 
 	verify {
 		/* verifying final state */
-		assert_last_event::<T>(Event::<T>::TaskRemoved(volunteer, hash_task).into());
+		assert_last_event::<T>(Event::<T>::TaskRemoved(task_creator, hash_task).into());
 	}
 
 	complete_task {
@@ -225,13 +225,14 @@ benchmarks! {
 		let _ = PalletTask::<T>::create_task(RawOrigin::Signed(task_creator.clone()).into(), title, specification, budget, x.into());
 		let hash_task = PalletTask::<T>::tasks_owned(&task_creator)[0];
 		let _ = PalletTask::<T>::start_task(RawOrigin::Signed(volunteer.clone()).into(), hash_task.clone());
+		let _ = PalletTask::<T>::complete_task(RawOrigin::Signed(volunteer.clone()).into(), hash_task.clone());
 
-	}: accept_task(RawOrigin::Signed(volunteer.clone()), hash_task)
+	}: accept_task(RawOrigin::Signed(task_creator.clone()), hash_task)
 		/* the code to be benchmarked */
 
 	verify {
 		/* verifying final state */
-		assert_last_event::<T>(Event::<T>::TaskAccepted(volunteer, hash_task).into());
+		assert_last_event::<T>(Event::<T>::TaskAccepted(task_creator, hash_task).into());
 	}
 
 	reject_task {
