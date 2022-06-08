@@ -363,6 +363,25 @@ fn completing_tasks_assigns_new_current_owner(){
 }
 
 #[test]
+fn the_volunteer_is_different_from_task_creator(){
+	new_test_ext().execute_with( || {
+
+		assert_ok!(Profile::create_profile(Origin::signed(1), USERNAME.to_vec(), Vec::new()));
+
+		let mut vec1 = Vec::new();
+		vec1.push(2);
+
+		// Ensure new task can be created with [signer, specification, budget, deadline]
+		assert_ok!(Task::create_task(Origin::signed(1), TITLE.to_vec(), vec1, 7, get_deadline()));
+
+		let hash = Task::tasks_owned(1)[0];
+		assert_noop!(Task::start_task(Origin::signed(1), hash), Error::<Test>::NoPermissionToStart);
+
+	});
+}
+
+
+#[test]
 fn only_creator_accepts_task(){
 	new_test_ext().execute_with( || {
 

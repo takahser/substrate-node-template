@@ -42,6 +42,8 @@
 //!
 //! Furthermore, budget funds are locked in escrow when task is created.
 //! Funds are removed from escrow when task is removed.
+//! 
+//! Tasks with expired deadline are automatically removed from storage. 
 //!
 //! ## Interface
 //!
@@ -228,6 +230,8 @@ pub mod pallet {
 		NoPermissionToComplete,
 		/// You are not allowed to update this task. Task is already in progress.
 		NoPermissionToUpdate,
+		/// You don't have permission to start a task that you have created.
+		NoPermissionToStart,
 		/// Only completed tasks can be rejected.
 		OnlyCompletedTaskAreRejected,
 		/// This account has no Profile yet.
@@ -455,9 +459,12 @@ pub mod pallet {
 			Ok(())
 		}
 
-		pub fn assign_task(to: &T::AccountId, task_id: &T::Hash) -> Result<(), DispatchError> {
+		pub fn assign_task(volunteer: &T::AccountId, task_id: &T::Hash) -> Result<(), DispatchError> {
 			// Check if task exists
 			let mut task = Self::tasks(&task_id).ok_or(<Error<T>>::TaskNotExist)?;
+
+			// Volunteer must be different than task Initiator
+			ensure!(!Self::is_task_initiator(task_id, volunteer)?, <Error<T>>::NoPermissionToStart);
 
 			// Remove task ownership from previous owner
 			let prev_owner = task.current_owner.clone();
@@ -470,13 +477,13 @@ pub mod pallet {
 			}).map_err(|_| <Error<T>>::TaskNotExist)?;
 
 			// Change task properties and insert
-			task.current_owner = to.clone();
-			task.volunteer = to.clone();
+			task.current_owner = volunteer.clone();
+			task.volunteer = volunteer.clone();
 			task.status = TaskStatus::InProgress;
 			<Tasks<T>>::insert(task_id, task);
 
 			// Assign task to volunteer
-			<TasksOwned<T>>::try_mutate(to, |vec| {
+			<TasksOwned<T>>::try_mutate(volunteer, |vec| {
 				vec.try_push(*task_id)
 			}).map_err(|_| <Error<T>>::ExceedMaxTasksOwned)?;
 
