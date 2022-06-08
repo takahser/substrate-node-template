@@ -299,8 +299,8 @@ pub mod pallet {
 			Ok(().into())
 		}
 
-		/// Function that deletes a task by task owner. [origin, task_id]
-		#[pallet::weight(<T as Config>::WeightInfo::start_task(0,0))]
+		/// Function that removes a task by task owner. [origin, task_id]
+		#[pallet::weight(<T as Config>::WeightInfo::remove_task(0,0))]
 		pub fn remove_task(origin: OriginFor<T>, task_id: T::Hash) -> DispatchResult {
 
 			// Check that the extrinsic was signed and get the signer.
