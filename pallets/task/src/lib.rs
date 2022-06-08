@@ -509,8 +509,8 @@ pub mod pallet {
 			// Check if task is in progress before closing
 			ensure!(TaskStatus::InProgress == task.status, <Error<T>>::NoPermissionToComplete);
 
-			// TODO: Check if the volunteer is the one who finished task
-
+			// Check if the volunteer is the one who finished task
+			ensure!(to == &task.volunteer, <Error<T>>::NoPermissionToComplete);
 
 			// Remove task ownership from current signer
 			<TasksOwned<T>>::try_mutate(&to, |owned| {
