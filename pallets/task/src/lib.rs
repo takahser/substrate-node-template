@@ -42,22 +42,49 @@
 //!
 //! Furthermore, budget funds are locked in escrow when task is created.
 //! Funds are removed from escrow when task is removed.
+//! 
+//! Tasks with expired deadline are automatically removed from storage. 
 //!
 //! ## Interface
 //!
 //! ### Public Functions
 //!
 //! - `create_task` - Function used to create a new task.
+//! 	Inputs: 
+//! 		- title: Vec<u8>, 
+//! 		- specification: Vec<u8>, 
+//! 		- budget: BalanceOf<T>, 
+//! 		- deadline: u64
 //!
 //! - `update_task` - Function used to update already existing task.
+//! 	Inputs: 
+//! 		- task_id: T::Hash,
+//! 		- title: Vec<u8>,
+//! 		- specification: Vec<u8>,
+//! 		- budget: BalanceOf<T>,
+//! 		- deadline: u64
 //! 	Only the creator of the task has the update rights.
 //!
+//! - `remove_task` - Function used to remove an already existing task.
+//! 	Inputs:
+//! 		- task_id: T::Hash,
+//! 
 //! - `start_task` - Function used to start already existing task.
-//!
+//! 	Inputs:
+//! 		- task_id: T::Hash,
+//! 		
 //! - `complete_task` - Function used to complete a task.
+//! 	Inputs:
+//! 		- task_id: T::Hash,
 //!
 //! - `accept_task` - Function used to accept completed task.
+//! 	Inputs:
+//! 		- task_id: T::Hash,
 //! 	After the task is accepted, its data is removed from storage.
+//! 
+//! - `reject_task` - Function used to reject an already completed task.
+//! 	Inputs: 
+//! 	- task_id: T::Hash,
 //!
 //! ## Related Modules
 //!
@@ -188,6 +215,9 @@ pub mod pallet {
 
 		/// Task rejected by owner [AccountID, hash id]
 		TaskRejected(T::AccountId, T::Hash),
+
+		/// Task deleted by owner [AccountID, hash id]
+		TaskRemoved(T::AccountId, T::Hash),
 	}
 
 	// Errors inform users that something went wrong.
@@ -207,6 +237,10 @@ pub mod pallet {
 		NoPermissionToComplete,
 		/// You are not allowed to update this task. Task is already in progress.
 		NoPermissionToUpdate,
+		/// You don't have permission to start a task that you have created.
+		NoPermissionToStart,
+		/// You don't have permission to delete this task.
+		NoPermissionToRemove,
 		/// Only completed tasks can be rejected.
 		OnlyCompletedTaskAreRejected,
 		/// This account has no Profile yet.
@@ -232,12 +266,14 @@ pub mod pallet {
 			// Update storage.
 			let task_id = Self::new_task(&signer, &title, &specification, &budget, deadline)?;
 
+			// Transfer balance amount to escrow account
 			let sub_account = Self::account_id(&task_id);
 			<T as self::Config>::Currency::transfer(&signer, &sub_account, budget,
 				ExistenceRequirement::KeepAlive)?;
+
 			// Emit a Task Created Event.
 			Self::deposit_event(Event::TaskCreated(signer, task_id));
-			// Return a successful DispatchResultWithPostInfo
+
 			Ok(().into())
 		}
 
@@ -252,15 +288,33 @@ pub mod pallet {
 			// Update storage.
 			let _task_id = Self::update_created_task(&signer, &task_id, &title, &specification, &budget, deadline)?;
 
+			// Update balance of escrow account
 			let sub_account = Self::account_id(&task_id);
 			<T as self::Config>::Currency::transfer(&signer, &sub_account, budget,
 				ExistenceRequirement::KeepAlive)?;
 
 			// Emit a Task Updated Event.
 			Self::deposit_event(Event::TaskUpdated(signer, task_id));
-			// Return a successful DispatchResultWithPostInfo
+
 			Ok(().into())
 		}
+
+		/// Function that removes a task by task owner. [origin, task_id]
+		#[pallet::weight(<T as Config>::WeightInfo::remove_task(0,0))]
+		pub fn remove_task(origin: OriginFor<T>, task_id: T::Hash) -> DispatchResult {
+
+			// Check that the extrinsic was signed and get the signer.
+			let signer = ensure_signed(origin)?;
+
+			// Delete task from storage.
+			Self::delete_task(&signer, &task_id)?;
+
+			// Emit a Task Removed Event.
+			Self::deposit_event(Event::TaskRemoved(signer, task_id));
+
+			Ok(())
+		}
+		
 
 		/// Function call that starts a task by assigning new task owner. [origin, task_id]
 		#[pallet::weight(<T as Config>::WeightInfo::start_task(0,0))]
@@ -302,13 +356,16 @@ pub mod pallet {
 			// Check that the extrinsic was signed and get the signer.
 			let signer = ensure_signed(origin)?;
 
+			// Check if task exists 
 			let task = Self::tasks(&task_id).ok_or(<Error<T>>::TaskNotExist)?;
-			// pay volunteer
+
+			// Transfer escrow funds to volunteer
 			let sub_account = Self::account_id(&task_id);
 			<T as self::Config>::Currency::transfer(&sub_account, &task.volunteer, task.budget,
 				ExistenceRequirement::AllowDeath)?;
-			// Complete task and update storage.
-			Self::delete_task(&signer, &task_id)?;
+
+			// Accept task and update storage.
+			Self::accept_completed_task(&signer, &task_id)?;
 
 			// Emit a Task Removed Event.
 			Self::deposit_event(Event::TaskAccepted(signer, task_id));
@@ -434,9 +491,16 @@ pub mod pallet {
 			Ok(())
 		}
 
-		pub fn assign_task(to: &T::AccountId, task_id: &T::Hash) -> Result<(), DispatchError> {
+		pub fn assign_task(volunteer: &T::AccountId, task_id: &T::Hash) -> Result<(), DispatchError> {
+			
 			// Check if task exists
 			let mut task = Self::tasks(&task_id).ok_or(<Error<T>>::TaskNotExist)?;
+
+			// Volunteer must be different than task Initiator
+			ensure!(!Self::is_task_initiator(task_id, volunteer)?, <Error<T>>::NoPermissionToStart);
+
+			// Ensure that only Created Task can be started
+			ensure!(TaskStatus::Created == task.status, <Error<T>>::NoPermissionToStart);
 
 			// Remove task ownership from previous owner
 			let prev_owner = task.current_owner.clone();
@@ -449,13 +513,13 @@ pub mod pallet {
 			}).map_err(|_| <Error<T>>::TaskNotExist)?;
 
 			// Change task properties and insert
-			task.current_owner = to.clone();
-			task.volunteer = to.clone();
+			task.current_owner = volunteer.clone();
+			task.volunteer = volunteer.clone();
 			task.status = TaskStatus::InProgress;
 			<Tasks<T>>::insert(task_id, task);
 
 			// Assign task to volunteer
-			<TasksOwned<T>>::try_mutate(to, |vec| {
+			<TasksOwned<T>>::try_mutate(volunteer, |vec| {
 				vec.try_push(*task_id)
 			}).map_err(|_| <Error<T>>::ExceedMaxTasksOwned)?;
 
@@ -471,8 +535,8 @@ pub mod pallet {
 			// Check if task is in progress before closing
 			ensure!(TaskStatus::InProgress == task.status, <Error<T>>::NoPermissionToComplete);
 
-			// TODO: Check if the volunteer is the one who finished task
-
+			// Check if the volunteer is the one who finished task
+			ensure!(to == &task.volunteer, <Error<T>>::NoPermissionToComplete);
 
 			// Remove task ownership from current signer
 			<TasksOwned<T>>::try_mutate(&to, |owned| {
@@ -499,7 +563,8 @@ pub mod pallet {
 			Ok(())
 		}
 
-		pub fn delete_task(task_initiator: &T::AccountId, task_id: &T::Hash) -> Result<(), DispatchError> {
+		pub fn accept_completed_task(task_initiator: &T::AccountId, task_id: &T::Hash) -> Result<(), DispatchError> {
+			
 			// Check if task exists
 			let mut task = Self::tasks(&task_id).ok_or(<Error<T>>::TaskNotExist)?;
 
@@ -515,11 +580,8 @@ pub mod pallet {
 				Err(())
 			}).map_err(|_| <Error<T>>::TaskNotExist)?;
 
-			// // Transfer balance to volunteer
-			// let volunteer = task.volunteer.clone();
-			// let budget = task.budget;
-			task.status = TaskStatus::Accepted;
 			// Update task state
+			task.status = TaskStatus::Accepted;
 			<Tasks<T>>::insert(task_id, task);
 
 			// Reward reputation points to profiles who created/completed a task
@@ -572,6 +634,28 @@ pub mod pallet {
 			Ok(())
 		}
 
+
+		pub fn delete_task(task_initiator: &T::AccountId, task_id: &T::Hash) -> Result<(), DispatchError> {
+
+			// Check if task exists
+			let task = Self::tasks(&task_id).ok_or(<Error<T>>::TaskNotExist)?;
+
+			// Check if the owner is the one who created task
+			ensure!(Self::is_task_initiator(task_id, task_initiator)?, <Error<T>>::NoPermissionToRemove);
+
+			// Ensure that only Created Task can be deleted
+			ensure!(TaskStatus::Created == task.status, <Error<T>>::NoPermissionToRemove);
+
+			// remove task from storage
+			<Tasks<T>>::remove(task_id);
+
+			// Reduce task count
+			let new_count = Self::task_count().saturating_sub(1);
+			<TaskCount<T>>::put(new_count);
+
+			Ok(())
+		}
+
 		// Function to check if the current signer is the task_initiator
 		pub fn is_task_initiator(task_id: &T::Hash, task_acceptor: &T::AccountId) -> Result<bool, DispatchError> {
 			match Self::tasks(task_id) {
@@ -579,7 +663,8 @@ pub mod pallet {
 				None => Err(<Error<T>>::TaskNotExist.into())
 			}
 		}
-
+		
+		// Function that generates escrow account based on TaskID
 		pub fn account_id(task_id: &T::Hash) -> T::AccountId {
 			T::PalletId::get().into_sub_account(task_id)
 		}
