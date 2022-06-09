@@ -306,10 +306,10 @@ pub mod pallet {
 			// Check that the extrinsic was signed and get the signer.
 			let signer = ensure_signed(origin)?;
 
-			// Assign task and update storage.
+			// Delete task from storage.
 			Self::delete_task(&signer, &task_id)?;
 
-			// Emit a Task Assigned Event.
+			// Emit a Task Removed Event.
 			Self::deposit_event(Event::TaskRemoved(signer, task_id));
 
 			Ok(())
