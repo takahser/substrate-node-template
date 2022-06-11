@@ -19,6 +19,8 @@ use sp_runtime::{
 	transaction_validity::{TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult, MultiSignature,
 };
+use scale_info::TypeInfo;
+use codec::{Encode, MaxEncodedLen};
 use sp_std::prelude::*;
 #[cfg(feature = "std")]
 use sp_version::NativeVersion;
@@ -294,11 +296,19 @@ impl pallet_dao::Config for Runtime {
 	type WeightInfo = pallet_dao::weights::SubstrateWeight<Runtime>;
 }
 
+parameter_types! {
+	#[derive(TypeInfo, MaxEncodedLen, Encode)]
+	pub const MaxStringLen: u32 = 256;
+	#[derive(TypeInfo, MaxEncodedLen, Encode)]
+	pub const MaxAdditionalInformationLen: u32 = 5000;
+}
 // Configure the pallet-profile.
 impl pallet_profile::Config for Runtime {
 	type Event = Event;
 	type Currency = Balances;
 	type WeightInfo = pallet_profile::weights::SubstrateWeight<Runtime>;
+	type MaxStringLen = MaxStringLen;
+	type MaxAdditionalInformationLen = MaxAdditionalInformationLen;
 }
 
 impl pallet_did::Config for Runtime {

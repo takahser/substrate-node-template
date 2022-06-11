@@ -23,6 +23,7 @@ use super::*;
 use crate::Pallet as PalletProfile;
 use frame_benchmarking::{benchmarks, impl_benchmark_test_suite, whitelisted_caller, vec};
 use frame_system::RawOrigin;
+use sp_std::convert::TryInto;
 
 use frame_support::{
 	traits::{Currency}};
@@ -44,10 +45,11 @@ fn create_profile_info<T: Config>(_num_fields: u32) -> Profile<T> {
 
 	let info = Profile {
 		owner: caller,
-		name: username,
-		interests: interests,
+		name: username.try_into().unwrap(),
+		interests: interests.try_into().unwrap(),
 		balance: Some(balance),
 		reputation: u32::MAX,
+		available_hours_per_week: 40_u8,
 	};
 
 	return info
@@ -67,7 +69,8 @@ benchmarks! {
 		let interests = vec![0u8, s as u8];
 		let username = vec![0u8, s as u8];
 
-	}: create_profile(RawOrigin::Signed(caller), username,  interests)
+	}: create_profile(RawOrigin::Signed(caller), username.try_into().unwrap(),
+	interests.try_into().unwrap())
 
 	verify {
 		/* verifying final state */
@@ -86,9 +89,9 @@ benchmarks! {
 		let username = vec![0u8, s as u8];
 
 		// before we update profile, profile must be created
-		let _ = PalletProfile::<T>::create_profile(RawOrigin::Signed(create_account_caller).into(), username.clone(), interests.clone());
+		let _ = PalletProfile::<T>::create_profile(RawOrigin::Signed(create_account_caller).into(), username.clone().try_into().unwrap(), interests.clone().try_into().unwrap());
 
-	}: update_profile(RawOrigin::Signed(update_account_caller), username, interests)
+	}: update_profile(RawOrigin::Signed(update_account_caller), username.try_into().unwrap(), interests.try_into().unwrap(), 40_u8)
 
 	verify {
 		/* verifying final state */
@@ -107,7 +110,7 @@ benchmarks! {
 		let username = vec![0u8, s as u8];
 
 		// before we delete profile, profile must be created
-		let _ = PalletProfile::<T>::create_profile(RawOrigin::Signed(create_account_caller).into(), username, interests);
+		let _ = PalletProfile::<T>::create_profile(RawOrigin::Signed(create_account_caller).into(), username.try_into().unwrap(), interests.try_into().unwrap());
 
 	}: remove_profile(RawOrigin::Signed(delete_account_caller))
 

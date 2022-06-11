@@ -57,13 +57,14 @@ pub mod weights;
 
 #[frame_support::pallet]
 pub mod pallet {
-	use frame_support::{dispatch::DispatchResult, pallet_prelude::*};
+	use frame_support::{dispatch::DispatchResult,
+	storage::bounded_vec::BoundedVec,
+	pallet_prelude::*};
 	use frame_system::pallet_prelude::*;
 	use frame_support::{
 		sp_runtime::traits::Hash,
-		traits::{Currency}};
+		traits::Currency};
 	use scale_info::TypeInfo;
-	use sp_std::vec::Vec;
 	use crate::weights::WeightInfo;
 
 
@@ -78,10 +79,11 @@ pub mod pallet {
 	#[scale_info(skip_type_params(T))]
 	pub struct Profile<T: Config> {
 		pub owner: AccountOf<T>,
-		pub name: Vec<u8>,
-		pub interests: Vec<u8>,
+		pub name: BoundedVec<u8, T::MaxStringLen>,
+		pub interests: BoundedVec<u8, T::MaxStringLen>,
 		pub balance: Option<BalanceOf<T>>,
 		pub reputation: u32,
+		pub available_hours_per_week: u8,
 	}
 
 	/// Configure the pallet by specifying the parameters and types on which it depends.
@@ -95,6 +97,14 @@ pub mod pallet {
 
 		/// WeightInfo provider.
 		type WeightInfo: WeightInfo;
+
+		/// A bound on name and interests fields of Profile struct.
+		#[pallet::constant]
+		type MaxStringLen: Get<u32> + MaxEncodedLen + TypeInfo;
+
+		/// A bound on additional information for profile.
+		#[pallet::constant]
+		type MaxAdditionalInformationLen: Get<u32> + MaxEncodedLen + TypeInfo;
 	}
 
 	#[pallet::pallet]
@@ -111,6 +121,11 @@ pub mod pallet {
 	/// Stores a Profile unique properties in a StorageMap.
 	pub(super) type Profiles<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, Profile<T>>;
 
+	#[pallet::storage]
+	#[pallet::getter(fn additional_information)]
+	/// Stores an additional information for a profile.
+	pub(super) type AdditionalInformation<T: Config> = StorageMap<_, Twox64Concat, T::AccountId,
+	BoundedVec<u8, T::MaxAdditionalInformationLen> >;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -124,6 +139,9 @@ pub mod pallet {
 		/// Profile was successfully updated.
 		ProfileUpdated { who: T::AccountId },
 
+		/// Profile additional information was successfully updated.
+		ProfileAdditionalInformation { who: T::AccountId },
+
 	}
 
 	// Errors inform users that something went wrong.
@@ -131,10 +149,6 @@ pub mod pallet {
 	pub enum Error<T> {
 		/// Reached maximum number of profiles.
 		ProfileCountOverflow,
-		/// No permission to update this profile.
-		NoUpdateAuthority,
-		/// Profiles can only be deleted by the creator
-		NoDeletionAuthority,
 		/// One Account can only create a single profile.
 		ProfileAlreadyCreated,
 		/// This Account has not yet created a profile.
@@ -149,7 +163,7 @@ pub mod pallet {
 
 		/// Dispatchable call that enables every new actor to create personal profile in storage.
 		#[pallet::weight(<T as Config>::WeightInfo::create_profile(0,0))]
-		pub fn create_profile(origin: OriginFor<T>, username: Vec<u8>, interests: Vec<u8>) -> DispatchResult {
+		pub fn create_profile(origin: OriginFor<T>, username: BoundedVec<u8, T::MaxStringLen>, interests: BoundedVec<u8, T::MaxStringLen>) -> DispatchResult {
 
 			// Check that the extrinsic was signed and get the signer.
 			let account = ensure_signed(origin)?;
@@ -165,18 +179,34 @@ pub mod pallet {
 
 		/// Dispatchable call that ensures user can update existing personal profile in storage.
 		#[pallet::weight(<T as Config>::WeightInfo::update_profile(0))]
-		pub fn update_profile(origin: OriginFor<T>, username: Vec<u8>, interests: Vec<u8>) -> DispatchResult {
+		pub fn update_profile(origin: OriginFor<T>, username: BoundedVec<u8, T::MaxStringLen>, interests: BoundedVec<u8, T::MaxStringLen>, available_hours_per_week: u8) -> DispatchResult {
 
 			// Check that the extrinsic was signed and get the signer.
 			let account = ensure_signed(origin)?;
 
 			// Since Each account can have one profile, we call into generate profile again
-			let _profile_id = Self::change_profile(&account, username, interests)?;
+			let _profile_id = Self::change_profile(&account, username, interests,
+				available_hours_per_week)?;
 
 			// Emit an event.
 			Self::deposit_event(Event::ProfileUpdated{ who: account });
 
 			Ok(())
+		}
+
+		#[pallet::weight(0)]
+		pub fn update_additional_information(origin: OriginFor<T>, additional_information :
+			Option<BoundedVec<u8, T::MaxAdditionalInformationLen>>) -> DispatchResult {
+			// Check that the extrinsic was signed and get the signer.
+			let account = ensure_signed(origin)?;
+
+			Self::change_additional_information(&account, additional_information)?;
+
+			// Emit an event.
+			Self::deposit_event(Event::ProfileAdditionalInformation{ who: account });
+
+			Ok(())
+
 		}
 
 
@@ -201,7 +231,7 @@ pub mod pallet {
 	// ** Helper internal functions ** //
 	impl<T:Config> Pallet<T> {
 		// Generates initial Profile.
-		pub fn generate_profile(owner: &T::AccountId, username: Vec<u8>, interests_vec: Vec<u8>) -> Result<T::Hash, DispatchError> {
+		pub fn generate_profile(owner: &T::AccountId, name: BoundedVec<u8, T::MaxStringLen>, interests: BoundedVec<u8, T::MaxStringLen>) -> Result<T::Hash, DispatchError> {
 
 			// Check if profile already exists for owner
 			ensure!(!Profiles::<T>::contains_key(&owner), Error::<T>::ProfileAlreadyCreated);
@@ -212,10 +242,11 @@ pub mod pallet {
 			// Populate Profile struct
 			let profile = Profile::<T> {
 				owner: owner.clone(),
-				name: username,
-				interests: interests_vec,
+				name,
+				interests,
 				balance: Some(balance),
 				reputation: 0,
+				available_hours_per_week: 40,
 			};
 
 			// Get hash of profile
@@ -232,15 +263,17 @@ pub mod pallet {
 		}
 
 		// Changes existing profile
-		pub fn change_profile(owner: &T::AccountId, new_username: Vec<u8>, new_interests: Vec<u8>) -> Result<T::Hash, DispatchError> {
+		pub fn change_profile(owner: &T::AccountId, new_username: BoundedVec<u8, T::MaxStringLen>, new_interests: BoundedVec<u8, T::MaxStringLen>, new_available_hours_per_week: u8) -> Result<T::Hash, DispatchError> {
 
 			// Ensure that only owner can update profile
-			let mut profile = Self::profiles(owner).ok_or(<Error<T>>::NoUpdateAuthority)?;
+			let mut profile = Self::profiles(owner).ok_or(<Error<T>>::NoProfileCreated)?;
 
 			// Change interests of owner
 			profile.change_interests(new_interests);
 
 			profile.change_username(new_username);
+
+			profile.change_available_hours_per_week(new_available_hours_per_week);
 
 			// Get hash of profile
 			let profile_id = T::Hashing::hash_of(&profile);
@@ -252,11 +285,28 @@ pub mod pallet {
 			Ok(profile_id)
 		}
 
+		pub fn change_additional_information(owner: &T::AccountId, additional_information:
+			Option<BoundedVec<u8, T::MaxAdditionalInformationLen>>) -> Result<(),
+			DispatchError> {
+				// if there is a profile then only it makes sense to have additional information
+				if <Profiles<T>>::contains_key(owner) {
+					if let Some(value) = additional_information {
+						<AdditionalInformation<T>>::insert(owner, value);
+					} else {
+						<AdditionalInformation<T>>::remove(owner);
+					}
+
+			Ok(())
+				} else {
+					Err(Error::<T>::NoProfileCreated.into())
+				}
+		}
+
 		// Public function that deletes a user profile
 		pub fn delete_profile(owner: &T::AccountId) -> Result<(), DispatchError> {
 
 			// Ensure that only creator of profile can delete it
-			Self::profiles(owner).ok_or(<Error<T>>::NoDeletionAuthority)?;
+			Self::profiles(owner).ok_or(<Error<T>>::NoProfileCreated)?;
 
 			// Remove profile from storage
 			<Profiles<T>>::remove(owner);
@@ -272,7 +322,7 @@ pub mod pallet {
 		pub fn add_reputation(owner: &T::AccountId) -> Result<(), DispatchError> {
 
 			// Get current profile
-			let mut profile = Self::profiles(owner).ok_or(<Error<T>>::NoUpdateAuthority)?;
+			let mut profile = Self::profiles(owner).ok_or(<Error<T>>::NoProfileCreated)?;
 
 			// Increase reputation
 			profile.increase_reputation();
@@ -303,12 +353,16 @@ pub mod pallet {
 			self.reputation -= 1;
 		}
 
-		pub fn change_interests(&mut self, new_interests: Vec<u8>) {
+		pub fn change_interests(&mut self, new_interests: BoundedVec<u8, T::MaxStringLen>) {
 			self.interests = new_interests;
 		}
 
-		pub fn change_username(&mut self, new_username: Vec<u8>) {
+		pub fn change_username(&mut self, new_username: BoundedVec<u8, T::MaxStringLen>) {
 			self.name = new_username;
+		}
+
+		pub fn change_available_hours_per_week(&mut self, new_available_hours_per_week: u8) {
+			self.available_hours_per_week = new_available_hours_per_week;
 		}
 	}
 

@@ -1,7 +1,9 @@
 use crate as pallet_dao;
 use frame_support::parameter_types;
 use frame_system as system;
+use codec::{Encode, MaxEncodedLen};
 use once_cell::sync::Lazy;
+use scale_info::TypeInfo;
 use sp_core::{sr25519, H256};
 use sp_runtime::{
 	testing::Header,
@@ -88,11 +90,19 @@ parameter_types! {
 	pub const MaxTasksOwned: u32 = 77;
 }
 
+parameter_types! {
+	#[derive(TypeInfo, MaxEncodedLen, Encode)]
+	pub const MaxStringLen: u32 = 256;
+	#[derive(TypeInfo, MaxEncodedLen, Encode)]
+	pub const MaxAdditionalInformationLen: u32 = 5000;
+}
 
 impl pallet_profile::Config for Test {
 	type Event = Event;
 	type Currency =  Balances;
 	type WeightInfo = ();
+	type MaxStringLen = MaxStringLen;
+	type MaxAdditionalInformationLen = MaxAdditionalInformationLen;
 }
 
 parameter_types! {
