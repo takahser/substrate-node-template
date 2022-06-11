@@ -142,7 +142,7 @@ fn user_can_update_profile() {
 		let username =  vec![7];
 
 		// Ensure user can update profile with new interests
-		assert_ok!(Profile::update_profile(Origin::signed(10), username.to_vec().try_into().unwrap(), interests.to_vec().try_into().unwrap(), 40_u8));
+		assert_ok!(Profile::update_profile(Origin::signed(10), username.to_vec().try_into().unwrap(), interests.to_vec().try_into().unwrap(), 20_u8));
 
 		// Get profile for current account
 		let profile = Profile::profiles(10).expect("should found the profile");
@@ -153,6 +153,7 @@ fn user_can_update_profile() {
 		// Ensure that the values have been updated successfully
 		assert_eq!(profile.name.into_inner(), &[7]);
 		assert_eq!(profile.interests.into_inner(), &[6]);
+		assert_eq!(profile.available_hours_per_week, 20_u8);
 
 	});
 }
@@ -174,5 +175,40 @@ fn user_can_only_update_own_profile() {
 
 		// Ensure another user can NOT update others profile.
 		assert_noop!(Profile::update_profile(Origin::signed(2), USERNAME.to_vec().try_into().unwrap(), vec2.try_into().unwrap(), 20_u8), Error::<Test>::NoProfileCreated);
+	});
+}
+
+#[test]
+fn user_can_update_additional_information() {
+	new_test_ext().execute_with(|| {
+		// Create vector of interests
+		let mut vec = Vec::new();
+		vec.push(7);
+		const USERNAME:&'static [u8] = &[1];
+
+		// Ensure the user can create profile
+		assert_ok!(Profile::create_profile(Origin::signed(1), USERNAME.to_vec().try_into().unwrap(), vec.try_into().unwrap()));
+
+		let additional_information = vec![0; 5000];
+		assert_ok!(Profile::update_additional_information(Origin::signed(1),
+		Some(additional_information.try_into().unwrap())));
+	});
+}
+
+#[test]
+fn additional_information_can_be_updated_if_profile_exists() {
+	new_test_ext().execute_with(|| {
+		// Create vector of interests
+		let mut vec = Vec::new();
+		vec.push(7);
+		const USERNAME:&'static [u8] = &[1];
+
+		// Ensure the user can create profile
+		assert_ok!(Profile::create_profile(Origin::signed(1), USERNAME.to_vec().try_into().unwrap(), vec.try_into().unwrap()));
+
+		let additional_information = vec![0; 5000];
+		// no profile exists for user 2
+		assert_noop!(Profile::update_additional_information(Origin::signed(2),
+		Some(additional_information.try_into().unwrap())), Error::<Test>::NoProfileCreated);
 	});
 }

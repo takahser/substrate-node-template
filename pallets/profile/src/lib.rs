@@ -37,6 +37,8 @@
 //!
 //! - `remove_profile` - Function used to delete an existing user profile.
 //!
+//! - `update_additional_information` - Function used to update additional information.
+//!
 //! ## Related Modules
 //!
 
@@ -194,6 +196,7 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// Dispatchable call that enables update of additional information related to profile.
 		#[pallet::weight(0)]
 		pub fn update_additional_information(origin: OriginFor<T>, additional_information :
 			Option<BoundedVec<u8, T::MaxAdditionalInformationLen>>) -> DispatchResult {
@@ -206,7 +209,6 @@ pub mod pallet {
 			Self::deposit_event(Event::ProfileAdditionalInformation{ who: account });
 
 			Ok(())
-
 		}
 
 
