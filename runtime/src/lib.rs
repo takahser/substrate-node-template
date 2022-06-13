@@ -298,17 +298,24 @@ impl pallet_dao::Config for Runtime {
 
 parameter_types! {
 	#[derive(TypeInfo, MaxEncodedLen, Encode)]
-	pub const MaxStringLen: u32 = 256;
+	pub const MaxUsernameLen: u32 = 256;
+	#[derive(TypeInfo, MaxEncodedLen, Encode)]
+	pub const MaxInterestsLen: u32 = 256;
 	#[derive(TypeInfo, MaxEncodedLen, Encode)]
 	pub const MaxAdditionalInformationLen: u32 = 5000;
+	#[derive(TypeInfo, MaxEncodedLen, Encode)]
+	pub const MaxCompletedTasksLen: u32 = 100;
 }
+
 // Configure the pallet-profile.
 impl pallet_profile::Config for Runtime {
 	type Event = Event;
 	type Currency = Balances;
 	type WeightInfo = pallet_profile::weights::SubstrateWeight<Runtime>;
-	type MaxStringLen = MaxStringLen;
+	type MaxUsernameLen = MaxUsernameLen;
+	type MaxInterestsLen = MaxInterestsLen;
 	type MaxAdditionalInformationLen = MaxAdditionalInformationLen;
+	type MaxCompletedTasksLen = MaxCompletedTasksLen;
 }
 
 impl pallet_did::Config for Runtime {

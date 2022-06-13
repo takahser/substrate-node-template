@@ -92,17 +92,23 @@ parameter_types! {
 
 parameter_types! {
 	#[derive(TypeInfo, MaxEncodedLen, Encode)]
-	pub const MaxStringLen: u32 = 256;
+	pub const MaxUsernameLen: u32 = 256;
+	#[derive(TypeInfo, MaxEncodedLen, Encode)]
+	pub const MaxInterestsLen: u32 = 256;
 	#[derive(TypeInfo, MaxEncodedLen, Encode)]
 	pub const MaxAdditionalInformationLen: u32 = 5000;
+	#[derive(TypeInfo, MaxEncodedLen, Encode)]
+	pub const MaxCompletedTasksLen: u32 = 100;
 }
 
 impl pallet_profile::Config for Test {
 	type Event = Event;
 	type Currency =  Balances;
 	type WeightInfo = ();
-	type MaxStringLen = MaxStringLen;
+	type MaxUsernameLen = MaxUsernameLen;
+	type MaxInterestsLen = MaxInterestsLen;
 	type MaxAdditionalInformationLen = MaxAdditionalInformationLen;
+	type MaxCompletedTasksLen = MaxCompletedTasksLen;
 }
 
 parameter_types! {
