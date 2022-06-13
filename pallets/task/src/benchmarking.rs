@@ -23,8 +23,9 @@ use super::*;
 use crate::Pallet as PalletTask;
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite, whitelisted_caller, vec, Vec};
 use frame_system::RawOrigin;
-use frame_support::traits::{Currency};
+use frame_support::traits::Currency;
 use pallet_profile::Pallet as PalletProfile;
+use sp_std::convert::TryInto;
 
 const SEED: u32 = 0;
 
@@ -68,9 +69,10 @@ fn create_profile<T: Config>(){
 
 	let username = Vec::new();
 	let interests = Vec::new();
+	let available_hours_per_week = 40_u8;
 
 	let caller: T::AccountId = whitelisted_caller();
-	let _profile = PalletProfile::<T>::create_profile(RawOrigin::Signed(caller).into(), username, interests);
+	let _profile = PalletProfile::<T>::create_profile(RawOrigin::Signed(caller).into(), username.try_into().unwrap(), interests.try_into().unwrap(), available_hours_per_week);
 
 }
 

@@ -23,6 +23,7 @@ use super::*;
 use crate::Pallet as PalletProfile;
 use frame_benchmarking::{benchmarks, impl_benchmark_test_suite, whitelisted_caller, vec};
 use frame_system::RawOrigin;
+use sp_std::convert::TryInto;
 
 use frame_support::{
 	traits::{Currency}};
@@ -38,16 +39,19 @@ fn create_profile_info<T: Config>(_num_fields: u32) -> Profile<T> {
 	let s: u8 = u8::MAX.into();
 	let interests = vec![0u8, s as u8];
 	let username = vec![0u8, s as u8];
+	let available_hours_per_week = 40_u8;
 
 	let caller: T::AccountId = whitelisted_caller();
 	let balance = T::Currency::free_balance(&caller);
 
 	let info = Profile {
 		owner: caller,
-		name: username,
-		interests: interests,
+		name: username.try_into().unwrap(),
+		interests: interests.try_into().unwrap(),
 		balance: Some(balance),
 		reputation: u32::MAX,
+		available_hours_per_week,
+		additional_information: None,
 	};
 
 	return info
@@ -66,8 +70,10 @@ benchmarks! {
 		let profile = create_profile_info::<T>(1);
 		let interests = vec![0u8, s as u8];
 		let username = vec![0u8, s as u8];
+		let available_hours_per_week = 40_u8;
 
-	}: create_profile(RawOrigin::Signed(caller), username,  interests)
+	}: create_profile(RawOrigin::Signed(caller), username.try_into().unwrap(),
+	interests.try_into().unwrap(), available_hours_per_week)
 
 	verify {
 		/* verifying final state */
@@ -84,11 +90,13 @@ benchmarks! {
 		let s in 1 .. u8::MAX.into(); // max bytes for interests
 		let interests = vec![0u8, s as u8];
 		let username = vec![0u8, s as u8];
+		let available_hours_per_week = 40_u8;
+		let additional_information = vec![0_u8; 5000];
 
 		// before we update profile, profile must be created
-		let _ = PalletProfile::<T>::create_profile(RawOrigin::Signed(create_account_caller).into(), username.clone(), interests.clone());
+		let _ = PalletProfile::<T>::create_profile(RawOrigin::Signed(create_account_caller).into(), username.clone().try_into().unwrap(), interests.clone().try_into().unwrap(), available_hours_per_week);
 
-	}: update_profile(RawOrigin::Signed(update_account_caller), username, interests)
+	}: update_profile(RawOrigin::Signed(update_account_caller), username.try_into().unwrap(), interests.try_into().unwrap(), available_hours_per_week, Some(additional_information.try_into().unwrap()))
 
 	verify {
 		/* verifying final state */
@@ -105,9 +113,10 @@ benchmarks! {
 		let s in 1 .. u8::MAX.into(); // max bytes for interests
 		let interests = vec![0u8, s as u8];
 		let username = vec![0u8, s as u8];
+		let available_hours_per_week = 40_u8;
 
 		// before we delete profile, profile must be created
-		let _ = PalletProfile::<T>::create_profile(RawOrigin::Signed(create_account_caller).into(), username, interests);
+		let _ = PalletProfile::<T>::create_profile(RawOrigin::Signed(create_account_caller).into(), username.try_into().unwrap(), interests.try_into().unwrap(), available_hours_per_week);
 
 	}: remove_profile(RawOrigin::Signed(delete_account_caller))
 

@@ -42,22 +42,22 @@
 //!
 //! Furthermore, budget funds are locked in escrow when task is created.
 //! Funds are removed from escrow when task is removed.
-//! 
-//! Tasks with expired deadline are automatically removed from storage. 
+//!
+//! Tasks with expired deadline are automatically removed from storage.
 //!
 //! ## Interface
 //!
 //! ### Public Functions
 //!
 //! - `create_task` - Function used to create a new task.
-//! 	Inputs: 
-//! 		- title: Vec<u8>, 
-//! 		- specification: Vec<u8>, 
-//! 		- budget: BalanceOf<T>, 
+//! 	Inputs:
+//! 		- title: Vec<u8>,
+//! 		- specification: Vec<u8>,
+//! 		- budget: BalanceOf<T>,
 //! 		- deadline: u64
 //!
 //! - `update_task` - Function used to update already existing task.
-//! 	Inputs: 
+//! 	Inputs:
 //! 		- task_id: T::Hash,
 //! 		- title: Vec<u8>,
 //! 		- specification: Vec<u8>,
@@ -68,11 +68,11 @@
 //! - `remove_task` - Function used to remove an already existing task.
 //! 	Inputs:
 //! 		- task_id: T::Hash,
-//! 
+//!
 //! - `start_task` - Function used to start already existing task.
 //! 	Inputs:
 //! 		- task_id: T::Hash,
-//! 		
+//!
 //! - `complete_task` - Function used to complete a task.
 //! 	Inputs:
 //! 		- task_id: T::Hash,
@@ -81,9 +81,9 @@
 //! 	Inputs:
 //! 		- task_id: T::Hash,
 //! 	After the task is accepted, its data is removed from storage.
-//! 
+//!
 //! - `reject_task` - Function used to reject an already completed task.
-//! 	Inputs: 
+//! 	Inputs:
 //! 	- task_id: T::Hash,
 //!
 //! ## Related Modules
@@ -314,7 +314,7 @@ pub mod pallet {
 
 			Ok(())
 		}
-		
+
 
 		/// Function call that starts a task by assigning new task owner. [origin, task_id]
 		#[pallet::weight(<T as Config>::WeightInfo::start_task(0,0))]
@@ -356,7 +356,7 @@ pub mod pallet {
 			// Check that the extrinsic was signed and get the signer.
 			let signer = ensure_signed(origin)?;
 
-			// Check if task exists 
+			// Check if task exists
 			let task = Self::tasks(&task_id).ok_or(<Error<T>>::TaskNotExist)?;
 
 			// Transfer escrow funds to volunteer
@@ -366,6 +366,8 @@ pub mod pallet {
 
 			// Accept task and update storage.
 			Self::accept_completed_task(&signer, &task_id)?;
+			// Add task to completed tasks list of volunteer's profile.
+			pallet_profile::Pallet::<T>::add_task_to_completed_tasks(&task.volunteer, task_id)?;
 
 			// Emit a Task Removed Event.
 			Self::deposit_event(Event::TaskAccepted(signer, task_id));
@@ -492,7 +494,7 @@ pub mod pallet {
 		}
 
 		pub fn assign_task(volunteer: &T::AccountId, task_id: &T::Hash) -> Result<(), DispatchError> {
-			
+
 			// Check if task exists
 			let mut task = Self::tasks(&task_id).ok_or(<Error<T>>::TaskNotExist)?;
 
@@ -564,7 +566,7 @@ pub mod pallet {
 		}
 
 		pub fn accept_completed_task(task_initiator: &T::AccountId, task_id: &T::Hash) -> Result<(), DispatchError> {
-			
+
 			// Check if task exists
 			let mut task = Self::tasks(&task_id).ok_or(<Error<T>>::TaskNotExist)?;
 
@@ -663,7 +665,7 @@ pub mod pallet {
 				None => Err(<Error<T>>::TaskNotExist.into())
 			}
 		}
-		
+
 		// Function that generates escrow account based on TaskID
 		pub fn account_id(task_id: &T::Hash) -> T::AccountId {
 			T::PalletId::get().into_sub_account(task_id)

@@ -1,6 +1,8 @@
 use crate as pallet_profile;
+use codec::{Encode, MaxEncodedLen};
 use frame_support::parameter_types;
 use frame_system as system;
+use scale_info::TypeInfo;
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
@@ -56,10 +58,25 @@ impl system::Config for Test {
 	type Version = ();
 }
 
+parameter_types! {
+	#[derive(TypeInfo, MaxEncodedLen, Encode)]
+	pub const MaxUsernameLen: u32 = 256;
+	#[derive(TypeInfo, MaxEncodedLen, Encode)]
+	pub const MaxInterestsLen: u32 = 256;
+	#[derive(TypeInfo, MaxEncodedLen, Encode)]
+	pub const MaxAdditionalInformationLen: u32 = 5000;
+	#[derive(TypeInfo, MaxEncodedLen, Encode)]
+	pub const MaxCompletedTasksLen: u32 = 100;
+}
+
 impl pallet_profile::Config for Test {
 	type Event = Event;
 	type Currency =  Balances;
 	type WeightInfo = ();
+	type MaxUsernameLen = MaxUsernameLen;
+	type MaxInterestsLen = MaxInterestsLen;
+	type MaxAdditionalInformationLen = MaxAdditionalInformationLen;
+	type MaxCompletedTasksLen = MaxCompletedTasksLen;
 }
 
 parameter_types! {

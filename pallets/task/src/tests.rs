@@ -1,3 +1,5 @@
+use core::convert::TryInto;
+
 use crate::TaskStatus;
 use crate::{mock::*, Error};
 use frame_support::traits::fungible::Inspect;
@@ -6,6 +8,7 @@ use frame_support::{assert_noop, assert_ok, traits::{UnixTime, Hooks}};
 pub const USERNAME:[u8; 1] = [7];
 pub const TITLE:[u8; 1] = [1];
 pub const MILLISEC_PER_BLOCK: u64 = 12000; // 12 sec for a block
+pub const AVAILABLE_HOURS_PER_WEEK : u8 = 40_u8;
 fn get_deadline() -> u64 {
 		// deadline is current time + 1 hour
 		let deadline = <Time as UnixTime>::now() + std::time::Duration::from_millis(3600 * 1000_u64);
@@ -35,7 +38,7 @@ fn create_new_task(){
 	new_test_ext().execute_with( || {
 
 		// Profile is necessary for task creation
-		assert_ok!(Profile::create_profile(Origin::signed(1), USERNAME.to_vec(), Vec::new()));
+		assert_ok!(Profile::create_profile(Origin::signed(1), USERNAME.to_vec().try_into().unwrap(), Vec::new().try_into().unwrap(), AVAILABLE_HOURS_PER_WEEK));
 
 		let mut vec = Vec::new();
 		vec.push(2);
@@ -50,7 +53,7 @@ fn fund_transfer_on_create_task(){
 	new_test_ext().execute_with( || {
 
 		// Profile is necessary for task creation
-		assert_ok!(Profile::create_profile(Origin::signed(1), USERNAME.to_vec(), Vec::new()));
+		assert_ok!(Profile::create_profile(Origin::signed(1), USERNAME.to_vec().try_into().unwrap(), Vec::new().try_into().unwrap(), AVAILABLE_HOURS_PER_WEEK));
 
 		let mut vec = Vec::new();
 		vec.push(2);
@@ -69,7 +72,7 @@ fn increase_task_count_when_creating_task(){
 	new_test_ext().execute_with( || {
 
 		// Profile is necessary for task creation
-		assert_ok!(Profile::create_profile(Origin::signed(1), USERNAME.to_vec(), Vec::new()));
+		assert_ok!(Profile::create_profile(Origin::signed(1), USERNAME.to_vec().try_into().unwrap(), Vec::new().try_into().unwrap(), AVAILABLE_HOURS_PER_WEEK));
 
 		let mut vec = Vec::new();
 		vec.push(2);
@@ -87,7 +90,7 @@ fn increase_task_count_when_creating_two_tasks(){
 	new_test_ext().execute_with( || {
 
 		// Profile is necessary for task creation
-		assert_ok!(Profile::create_profile(Origin::signed(1), USERNAME.to_vec(), Vec::new()));
+		assert_ok!(Profile::create_profile(Origin::signed(1), USERNAME.to_vec().try_into().unwrap(), Vec::new().try_into().unwrap(), AVAILABLE_HOURS_PER_WEEK));
 
 		let mut vec1 = Vec::new();
 		vec1.push(2);
@@ -111,7 +114,7 @@ fn cant_own_more_tax_than_max_tasks(){
 		// TODO: use MaxTasksOwned instead of hardcoded values;
 
 		// Profile is necessary for task creation
-		assert_ok!(Profile::create_profile(Origin::signed(1), USERNAME.to_vec(), Vec::new()));
+		assert_ok!(Profile::create_profile(Origin::signed(1), USERNAME.to_vec().try_into().unwrap(), Vec::new().try_into().unwrap(), AVAILABLE_HOURS_PER_WEEK));
 
 		// Create 77 tasks  ExceedMaxTasksOwned
 		for n in 0..77 {
@@ -141,7 +144,7 @@ fn assign_task_to_current_owner(){
 	new_test_ext().execute_with( || {
 
 		// Profile is necessary for task creation
-		assert_ok!(Profile::create_profile(Origin::signed(10), USERNAME.to_vec(), Vec::new()));
+		assert_ok!(Profile::create_profile(Origin::signed(10), USERNAME.to_vec().try_into().unwrap(), Vec::new().try_into().unwrap(), AVAILABLE_HOURS_PER_WEEK));
 
 		let mut vec1 = Vec::new();
 		vec1.push(2);
@@ -161,7 +164,7 @@ fn verify_inputs_outputs_to_tasks(){
 	new_test_ext().execute_with( || {
 
 		// Profile is necessary for task creation
-		assert_ok!(Profile::create_profile(Origin::signed(10), USERNAME.to_vec(), Vec::new()));
+		assert_ok!(Profile::create_profile(Origin::signed(10), USERNAME.to_vec().try_into().unwrap(), Vec::new().try_into().unwrap(), AVAILABLE_HOURS_PER_WEEK));
 
 		let mut vec1 = Vec::new();
 		vec1.push(2);
@@ -184,7 +187,8 @@ fn task_can_be_updated_after_it_is_created(){
 	new_test_ext().execute_with( || {
 
 		// Profile is necessary for task creation
-		assert_ok!(Profile::create_profile(Origin::signed(10), USERNAME.to_vec(), Vec::new()));
+		assert_ok!(Profile::create_profile(Origin::signed(10), USERNAME.to_vec().try_into().unwrap(), Vec::new().try_into().unwrap(), AVAILABLE_HOURS_PER_WEEK));
+
 
 		let mut vec1 = Vec::new();
 		vec1.push(2);
@@ -219,7 +223,7 @@ fn task_can_be_updated_only_by_one_who_created_it(){
 	new_test_ext().execute_with( || {
 
 		// Profile is necessary for task creation
-		assert_ok!(Profile::create_profile(Origin::signed(10), USERNAME.to_vec(), Vec::new()));
+		assert_ok!(Profile::create_profile(Origin::signed(10), USERNAME.to_vec().try_into().unwrap(), Vec::new().try_into().unwrap(), AVAILABLE_HOURS_PER_WEEK));
 
 		let mut vec1 = Vec::new();
 		vec1.push(2);
@@ -243,7 +247,7 @@ fn task_can_be_updated_only_after_it_has_been_created(){
 	new_test_ext().execute_with( || {
 
 		// Profile is necessary for task creation
-		assert_ok!(Profile::create_profile(Origin::signed(10), USERNAME.to_vec(), Vec::new()));
+		assert_ok!(Profile::create_profile(Origin::signed(10), USERNAME.to_vec().try_into().unwrap(), Vec::new().try_into().unwrap(), AVAILABLE_HOURS_PER_WEEK));
 
 		let mut vec1 = Vec::new();
 		vec1.push(2);
@@ -272,8 +276,8 @@ fn start_tasks_assigns_new_current_owner(){
 	new_test_ext().execute_with( || {
 
 		// Profile is necessary for task creation
-		assert_ok!(Profile::create_profile(Origin::signed(1),USERNAME.to_vec(), Vec::new()));
-		assert_ok!(Profile::create_profile(Origin::signed(2),USERNAME.to_vec(), Vec::new()));
+		assert_ok!(Profile::create_profile(Origin::signed(1), USERNAME.to_vec().try_into().unwrap(), Vec::new().try_into().unwrap(), AVAILABLE_HOURS_PER_WEEK));
+		assert_ok!(Profile::create_profile(Origin::signed(2), USERNAME.to_vec().try_into().unwrap(), Vec::new().try_into().unwrap(), AVAILABLE_HOURS_PER_WEEK));
 
 		let mut vec1 = Vec::new();
 		vec1.push(2);
@@ -302,8 +306,7 @@ fn start_tasks_assigns_task_to_volunteer(){
 	new_test_ext().execute_with( || {
 
 		// Profile is necessary for task creation
-		assert_ok!(Profile::create_profile(Origin::signed(1), USERNAME.to_vec(), Vec::new()));
-
+		assert_ok!(Profile::create_profile(Origin::signed(1), USERNAME.to_vec().try_into().unwrap(), Vec::new().try_into().unwrap(), AVAILABLE_HOURS_PER_WEEK));
 		let mut vec1 = Vec::new();
 		vec1.push(2);
 
@@ -331,7 +334,7 @@ fn completing_tasks_assigns_new_current_owner(){
 	new_test_ext().execute_with( || {
 
 		// Profile is necessary for task creation
-		assert_ok!(Profile::create_profile(Origin::signed(1), USERNAME.to_vec(), Vec::new()));
+		assert_ok!(Profile::create_profile(Origin::signed(1), USERNAME.to_vec().try_into().unwrap(), Vec::new().try_into().unwrap(), AVAILABLE_HOURS_PER_WEEK));
 
 		let mut vec1 = Vec::new();
 		vec1.push(2);
@@ -366,7 +369,7 @@ fn completing_tasks_assigns_new_current_owner(){
 fn the_volunteer_is_different_from_task_creator(){
 	new_test_ext().execute_with( || {
 
-		assert_ok!(Profile::create_profile(Origin::signed(1), USERNAME.to_vec(), Vec::new()));
+		assert_ok!(Profile::create_profile(Origin::signed(1), USERNAME.to_vec().try_into().unwrap(), Vec::new().try_into().unwrap(), AVAILABLE_HOURS_PER_WEEK));
 
 		let mut vec1 = Vec::new();
 		vec1.push(2);
@@ -385,7 +388,7 @@ fn the_volunteer_is_different_from_task_creator(){
 fn task_can_only_be_started_once(){
 	new_test_ext().execute_with( || {
 
-		assert_ok!(Profile::create_profile(Origin::signed(1), USERNAME.to_vec(), Vec::new()));
+		assert_ok!(Profile::create_profile(Origin::signed(1), USERNAME.to_vec().try_into().unwrap(), Vec::new().try_into().unwrap(), AVAILABLE_HOURS_PER_WEEK));
 
 		let mut vec1 = Vec::new();
 		vec1.push(2);
@@ -405,7 +408,7 @@ fn task_can_only_be_started_once(){
 fn task_can_only_be_finished_by_the_user_who_started_it(){
 	new_test_ext().execute_with( || {
 
-		assert_ok!(Profile::create_profile(Origin::signed(1), USERNAME.to_vec(), Vec::new()));
+		assert_ok!(Profile::create_profile(Origin::signed(1), USERNAME.to_vec().try_into().unwrap(), Vec::new().try_into().unwrap(), AVAILABLE_HOURS_PER_WEEK));
 
 		let mut vec1 = Vec::new();
 		vec1.push(2);
@@ -416,7 +419,7 @@ fn task_can_only_be_finished_by_the_user_who_started_it(){
 		// Ensure that task can't be started once its started
 		let hash = Task::tasks_owned(1)[0];
 		assert_ok!(Task::start_task(Origin::signed(2), hash));
-		
+
 		// Ensure that a user who didn't start the task has no permission to complete it
 		assert_noop!(Task::complete_task(Origin::signed(1), hash), Error::<Test>::NoPermissionToComplete);
 
@@ -427,7 +430,7 @@ fn task_can_only_be_finished_by_the_user_who_started_it(){
 fn task_can_be_removed_by_owner(){
 	new_test_ext().execute_with( || {
 
-		assert_ok!(Profile::create_profile(Origin::signed(1), USERNAME.to_vec(), Vec::new()));
+		assert_ok!(Profile::create_profile(Origin::signed(1), USERNAME.to_vec().try_into().unwrap(), Vec::new().try_into().unwrap(), AVAILABLE_HOURS_PER_WEEK));
 
 		let mut vec1 = Vec::new();
 		vec1.push(2);
@@ -437,10 +440,10 @@ fn task_can_be_removed_by_owner(){
 
 		// Ensure that task can't be started once its started
 		let hash = Task::tasks_owned(1)[0];
-		
+
 		// Ensure another user can't remove the task
 		assert_noop!(Task::remove_task(Origin::signed(2), hash), Error::<Test>::NoPermissionToRemove);
-		
+
 		// Ensure the task can be removed
 		assert_ok!(Task::remove_task(Origin::signed(1), hash));
 		assert_eq!(Task::task_count(), 0);
@@ -452,7 +455,7 @@ fn task_can_be_removed_by_owner(){
 fn task_can_be_removed_only_when_status_is_created(){
 	new_test_ext().execute_with( || {
 
-		assert_ok!(Profile::create_profile(Origin::signed(1), USERNAME.to_vec(), Vec::new()));
+		assert_ok!(Profile::create_profile(Origin::signed(1), USERNAME.to_vec().try_into().unwrap(), Vec::new().try_into().unwrap(), AVAILABLE_HOURS_PER_WEEK));
 
 		let mut vec1 = Vec::new();
 		vec1.push(2);
@@ -463,10 +466,10 @@ fn task_can_be_removed_only_when_status_is_created(){
 		// Ensure that task can't be started once its started
 		let hash = Task::tasks_owned(1)[0];
 		assert_ok!(Task::start_task(Origin::signed(2), hash));
-		
+
 		// Ensure another user can't remove the task
 		assert_noop!(Task::remove_task(Origin::signed(2), hash), Error::<Test>::NoPermissionToRemove);
-		
+
 	});
 }
 
@@ -476,8 +479,8 @@ fn only_creator_accepts_task(){
 	new_test_ext().execute_with( || {
 
 		// Profile is necessary for task creation
-		assert_ok!(Profile::create_profile(Origin::signed(1), USERNAME.to_vec(), Vec::new()));
-		assert_ok!(Profile::create_profile(Origin::signed(2), USERNAME.to_vec(), Vec::new()));
+		assert_ok!(Profile::create_profile(Origin::signed(1), USERNAME.to_vec().try_into().unwrap(), Vec::new().try_into().unwrap(), AVAILABLE_HOURS_PER_WEEK));
+		assert_ok!(Profile::create_profile(Origin::signed(2), USERNAME.to_vec().try_into().unwrap(), Vec::new().try_into().unwrap(), AVAILABLE_HOURS_PER_WEEK));
 
 		let mut vec1 = Vec::new();
 		vec1.push(2);
@@ -512,12 +515,38 @@ fn only_creator_accepts_task(){
 }
 
 #[test]
+fn accepted_task_is_added_to_completed_task_for_volunteer(){
+	new_test_ext().execute_with( || {
+
+		// Profile is necessary for task creation
+		assert_ok!(Profile::create_profile(Origin::signed(1), USERNAME.to_vec().try_into().unwrap(), Vec::new().try_into().unwrap(), AVAILABLE_HOURS_PER_WEEK));
+		assert_ok!(Profile::create_profile(Origin::signed(2), USERNAME.to_vec().try_into().unwrap(), Vec::new().try_into().unwrap(), AVAILABLE_HOURS_PER_WEEK));
+
+		let mut vec1 = Vec::new();
+		vec1.push(2);
+
+		assert_ok!(Task::create_task(Origin::signed(1), TITLE.to_vec(), vec1, 7, get_deadline()));
+
+		let hash = Task::tasks_owned(1)[0];
+		assert_ok!(Task::start_task(Origin::signed(2), hash));
+
+		assert_ok!(Task::complete_task(Origin::signed(2), hash));
+
+		assert_ok!(Task::accept_task(Origin::signed(1), hash));
+
+		// An accepted task is added as completed task on volunteer's profile.
+		let completed_tasks = Profile::completed_tasks(2);
+		assert!(completed_tasks.is_some());
+		assert_eq!(completed_tasks.unwrap().into_inner(), vec![hash]);
+	});
+}
+#[test]
 fn volunteer_gets_paid_on_task_completion(){
 	new_test_ext().execute_with( || {
 
 		// Profile is necessary for task creation
-		assert_ok!(Profile::create_profile(Origin::signed(1), USERNAME.to_vec(), Vec::new()));
-		assert_ok!(Profile::create_profile(Origin::signed(2), USERNAME.to_vec(), Vec::new()));
+		assert_ok!(Profile::create_profile(Origin::signed(1), USERNAME.to_vec().try_into().unwrap(), Vec::new().try_into().unwrap(), AVAILABLE_HOURS_PER_WEEK));
+		assert_ok!(Profile::create_profile(Origin::signed(2), USERNAME.to_vec().try_into().unwrap(), Vec::new().try_into().unwrap(), AVAILABLE_HOURS_PER_WEEK));
 
 		let mut vec1 = Vec::new();
 		vec1.push(2);
@@ -547,8 +576,8 @@ fn only_started_task_can_be_completed(){
 	new_test_ext().execute_with( || {
 
 		// Profile is necessary for task creation
-		assert_ok!(Profile::create_profile(Origin::signed(1), USERNAME.to_vec(), Vec::new()));
-		assert_ok!(Profile::create_profile(Origin::signed(2), USERNAME.to_vec(), Vec::new()));
+		assert_ok!(Profile::create_profile(Origin::signed(1), USERNAME.to_vec().try_into().unwrap(), Vec::new().try_into().unwrap(), AVAILABLE_HOURS_PER_WEEK));
+		assert_ok!(Profile::create_profile(Origin::signed(2), USERNAME.to_vec().try_into().unwrap(), Vec::new().try_into().unwrap(), AVAILABLE_HOURS_PER_WEEK));
 
 		let mut vec1 = Vec::new();
 		vec1.push(2);
@@ -577,8 +606,8 @@ fn when_task_is_accepted_ownership_is_cleared(){
 	new_test_ext().execute_with( || {
 
 		// Profile is necessary for task creation
-		assert_ok!(Profile::create_profile(Origin::signed(1), USERNAME.to_vec(), Vec::new()));
-		assert_ok!(Profile::create_profile(Origin::signed(2), USERNAME.to_vec(), Vec::new()));
+		assert_ok!(Profile::create_profile(Origin::signed(1), USERNAME.to_vec().try_into().unwrap(), Vec::new().try_into().unwrap(), AVAILABLE_HOURS_PER_WEEK));
+		assert_ok!(Profile::create_profile(Origin::signed(2), USERNAME.to_vec().try_into().unwrap(), Vec::new().try_into().unwrap(), AVAILABLE_HOURS_PER_WEEK));
 
 		let mut vec1 = Vec::new();
 		vec1.push(2);
@@ -621,7 +650,7 @@ fn decrease_task_count_when_accepting_task(){
 	new_test_ext().execute_with( || {
 
 		// Profile is necessary for task creation
-		assert_ok!(Profile::create_profile(Origin::signed(1), USERNAME.to_vec(), Vec::new()));
+		assert_ok!(Profile::create_profile(Origin::signed(1), USERNAME.to_vec().try_into().unwrap(), Vec::new().try_into().unwrap(), AVAILABLE_HOURS_PER_WEEK));
 
 		let mut vec = Vec::new();
 		vec.push(2);
@@ -644,7 +673,7 @@ fn task_can_be_rejected_by_creator(){
 	new_test_ext().execute_with( || {
 
 		// Profile is necessary for task creation
-		assert_ok!(Profile::create_profile(Origin::signed(1), USERNAME.to_vec(), Vec::new()));
+		assert_ok!(Profile::create_profile(Origin::signed(1), USERNAME.to_vec().try_into().unwrap(), Vec::new().try_into().unwrap(), AVAILABLE_HOURS_PER_WEEK));
 
 		let mut vec = Vec::new();
 		vec.push(2);
@@ -686,8 +715,8 @@ fn increase_profile_reputation_when_task_completed(){
 	new_test_ext().execute_with( || {
 
 		// Profile is necessary for task creation
-		assert_ok!(Profile::create_profile(Origin::signed(1), USERNAME.to_vec(), Vec::new()));
-		assert_ok!(Profile::create_profile(Origin::signed(2), USERNAME.to_vec(), Vec::new()));
+		assert_ok!(Profile::create_profile(Origin::signed(1), USERNAME.to_vec().try_into().unwrap(), Vec::new().try_into().unwrap(), AVAILABLE_HOURS_PER_WEEK));
+		assert_ok!(Profile::create_profile(Origin::signed(2), USERNAME.to_vec().try_into().unwrap(), Vec::new().try_into().unwrap(), AVAILABLE_HOURS_PER_WEEK));
 
 		let mut vec1 = Vec::new();
 		vec1.push(2);
@@ -724,7 +753,7 @@ fn only_add_reputation_when_task_has_been_accepted(){
 	new_test_ext().execute_with( || {
 
 		// Profile is necessary for task creation
-		assert_ok!(Profile::create_profile(Origin::signed(1), USERNAME.to_vec(), Vec::new()));
+		assert_ok!(Profile::create_profile(Origin::signed(1), USERNAME.to_vec().try_into().unwrap(), Vec::new().try_into().unwrap(), AVAILABLE_HOURS_PER_WEEK));
 
 		let mut vec = Vec::new();
 		vec.push(2);
@@ -751,7 +780,7 @@ fn delete_task_after_deadline() {
 	new_test_ext().execute_with( || {
 		run_to_block(1);
 		// Profile is necessary for task creation
-		assert_ok!(Profile::create_profile(Origin::signed(1), USERNAME.to_vec(), Vec::new()));
+		assert_ok!(Profile::create_profile(Origin::signed(1), USERNAME.to_vec().try_into().unwrap(), Vec::new().try_into().unwrap(), AVAILABLE_HOURS_PER_WEEK));
 
 		let mut vec = Vec::new();
 		vec.push(2);
