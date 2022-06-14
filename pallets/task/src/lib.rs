@@ -51,10 +51,12 @@
 //!
 //! - `create_task` - Function used to create a new task.
 //! 	Inputs:
-//! 		- title: Vec<u8>,
-//! 		- specification: Vec<u8>,
+//! 		- title: BoundedVec,
+//! 		- specification: BoundedVec,
 //! 		- budget: BalanceOf<T>,
 //! 		- deadline: u64
+//! 		- attachments: BoundedVec,
+//! 		- keywords: BoundedVec
 //!
 //! - `update_task` - Function used to update already existing task.
 //! 	Inputs:
@@ -62,7 +64,9 @@
 //! 		- title: Vec<u8>,
 //! 		- specification: Vec<u8>,
 //! 		- budget: BalanceOf<T>,
-//! 		- deadline: u64
+//! 		- deadline: u64,
+//! 		- attachments, BoundedVec
+//! 		- keywords: BoundedVec,
 //! 	Only the creator of the task has the update rights.
 //!
 //! - `remove_task` - Function used to remove an already existing task.
@@ -85,6 +89,7 @@
 //! - `reject_task` - Function used to reject an already completed task.
 //! 	Inputs:
 //! 	- task_id: T::Hash,
+//! 	- feedback : BoundedVec
 //!
 //! ## Related Modules
 //!
