@@ -111,6 +111,16 @@ parameter_types! {
 	// One can owned at most 77 tasks
 	pub const MaxTasksOwned: u32 = 77;
 	pub TestPalletID : PalletId = PalletId(*b"task_pal");
+	#[derive(TypeInfo, MaxEncodedLen, Encode)]
+	pub const MaxTitleLen: u32 = 256;
+	#[derive(TypeInfo, MaxEncodedLen, Encode)]
+	pub const MaxSpecificationLen: u32 = 256;
+	#[derive(TypeInfo, MaxEncodedLen, Encode)]
+	pub const MaxAttachmentsLen: u32 = 5000;
+	#[derive(TypeInfo, MaxEncodedLen, Encode)]
+	pub const MaxFeedbackLen: u32 = 5000;
+	#[derive(TypeInfo, MaxEncodedLen, Encode)]
+	pub const MaxKeywordsLen: u32 = 100;
 }
 
 impl pallet_task::Config for Test {
@@ -120,6 +130,12 @@ impl pallet_task::Config for Test {
 	type Time = Time;
 	type WeightInfo = ();
 	type PalletId = TestPalletID;
+	type MaxTitleLen = MaxTitleLen;
+	type MaxSpecificationLen = MaxSpecificationLen;
+	type MaxAttachmentsLen = MaxAttachmentsLen;
+	type MaxFeedbackLen = MaxFeedbackLen;
+	type MaxKeywordsLen = MaxKeywordsLen;
+
 }
 
 pub(crate) fn new_test_ext() -> sp_io::TestExternalities {
