@@ -51,10 +51,12 @@
 //!
 //! - `create_task` - Function used to create a new task.
 //! 	Inputs:
-//! 		- title: Vec<u8>,
-//! 		- specification: Vec<u8>,
+//! 		- title: BoundedVec,
+//! 		- specification: BoundedVec,
 //! 		- budget: BalanceOf<T>,
 //! 		- deadline: u64
+//! 		- attachments: BoundedVec,
+//! 		- keywords: BoundedVec
 //!
 //! - `update_task` - Function used to update already existing task.
 //! 	Inputs:
@@ -62,7 +64,9 @@
 //! 		- title: Vec<u8>,
 //! 		- specification: Vec<u8>,
 //! 		- budget: BalanceOf<T>,
-//! 		- deadline: u64
+//! 		- deadline: u64,
+//! 		- attachments, BoundedVec
+//! 		- keywords: BoundedVec,
 //! 	Only the creator of the task has the update rights.
 //!
 //! - `remove_task` - Function used to remove an already existing task.
@@ -85,6 +89,7 @@
 //! - `reject_task` - Function used to reject an already completed task.
 //! 	Inputs:
 //! 	- task_id: T::Hash,
+//! 	- feedback : BoundedVec
 //!
 //! ## Related Modules
 //!
@@ -130,14 +135,20 @@ pub mod pallet {
 	#[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, TypeInfo)]
 	#[scale_info(skip_type_params(T))]
 	pub struct Task<T: Config> {
-		pub title: Vec<u8>,
-		pub specification: Vec<u8>,
+		pub title: BoundedVec<u8, T::MaxTitleLen>,
+		pub specification: BoundedVec<u8, T::MaxSpecificationLen>,
 		pub initiator: AccountOf<T>,
 		pub volunteer: AccountOf<T>,
 		pub current_owner: AccountOf<T>,
 		pub status: TaskStatus,
 		pub budget: BalanceOf<T>,
 		pub deadline: u64,
+		pub attachments: BoundedVec<u8, T::MaxAttachmentsLen>,
+		pub keywords: BoundedVec<u8, T::MaxKeywordsLen>,
+		pub feedback: Option<BoundedVec<u8, T::MaxFeedbackLen>>,
+		pub created_at: <T as frame_system::Config>::BlockNumber,
+		pub updated_at:<T as frame_system::Config>::BlockNumber,
+		pub completed_at: <T as frame_system::Config>::BlockNumber,
 	}
 
 	// Set TaskStatus enum.
@@ -166,6 +177,21 @@ pub mod pallet {
 		/// The maximum amount of tasks a single account can own.
 		#[pallet::constant]
 		type MaxTasksOwned: Get<u32>;
+
+		#[pallet::constant]
+		type MaxTitleLen: Get<u32> + MaxEncodedLen + TypeInfo;
+
+		#[pallet::constant]
+		type MaxSpecificationLen: Get<u32> + MaxEncodedLen + TypeInfo;
+
+		#[pallet::constant]
+		type MaxAttachmentsLen: Get<u32> + MaxEncodedLen + TypeInfo;
+
+		#[pallet::constant]
+		type MaxFeedbackLen: Get<u32> + MaxEncodedLen + TypeInfo;
+
+		#[pallet::constant]
+		type MaxKeywordsLen: Get<u32> + MaxEncodedLen + TypeInfo;
 
 		/// WeightInfo provider.
 		type WeightInfo: WeightInfo;
@@ -258,13 +284,14 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 		/// Function call that creates tasks.  [ origin, specification, budget, deadline]
 		#[pallet::weight(<T as Config>::WeightInfo::create_task(0,0))]
-		pub fn create_task(origin: OriginFor<T>, title: Vec<u8>, specification: Vec<u8>, budget: BalanceOf<T>, deadline: u64) -> DispatchResultWithPostInfo {
+		pub fn create_task(origin: OriginFor<T>, title: BoundedVec<u8, T::MaxTitleLen>, specification: BoundedVec<u8, T::MaxSpecificationLen>, budget: BalanceOf<T>, 
+			deadline: u64, attachments: BoundedVec<u8, T::MaxAttachmentsLen>, keywords: BoundedVec<u8, T::MaxKeywordsLen>) -> DispatchResultWithPostInfo {
 
 			// Check that the extrinsic was signed and get the signer.
 			let signer = ensure_signed(origin)?;
 
 			// Update storage.
-			let task_id = Self::new_task(&signer, &title, &specification, &budget, deadline)?;
+			let task_id = Self::new_task(&signer, title, specification, &budget, deadline, attachments, keywords)?;
 
 			// Transfer balance amount to escrow account
 			let sub_account = Self::account_id(&task_id);
@@ -280,13 +307,14 @@ pub mod pallet {
 		/// Function call that updates a created task.  [ origin, specification, budget, deadline]
 		/// Note: budget specified in this call is added to budget provided in create_task() call.
 		#[pallet::weight(<T as Config>::WeightInfo::update_task(0,0))]
-		pub fn update_task(origin: OriginFor<T>, task_id: T::Hash, title: Vec<u8>, specification: Vec<u8>, budget: BalanceOf<T>, deadline: u64) -> DispatchResultWithPostInfo {
+		pub fn update_task(origin: OriginFor<T>, task_id: T::Hash, title: BoundedVec<u8, T::MaxTitleLen>, specification: BoundedVec<u8, T::MaxSpecificationLen>, 
+			budget: BalanceOf<T>, deadline: u64, attachments: BoundedVec<u8, T::MaxAttachmentsLen>, keywords: BoundedVec<u8, T::MaxKeywordsLen>) -> DispatchResultWithPostInfo {
 
 			// Check that the extrinsic was signed and get the signer.
 			let signer = ensure_signed(origin)?;
 
 			// Update storage.
-			let _task_id = Self::update_created_task(&signer, &task_id, &title, &specification, &budget, deadline)?;
+			let _task_id = Self::update_created_task(&signer, &task_id, title, specification, &budget, deadline, attachments, keywords)?;
 
 			// Update balance of escrow account
 			let sub_account = Self::account_id(&task_id);
@@ -377,13 +405,13 @@ pub mod pallet {
 
 		/// Function to reject a completed task. [origin, task_id]
 		#[pallet::weight(<T as Config>::WeightInfo::reject_task(0,0))]
-		pub fn reject_task(origin: OriginFor<T>, task_id: T::Hash) -> DispatchResult {
+		pub fn reject_task(origin: OriginFor<T>, task_id: T::Hash, feedback: BoundedVec<u8, T::MaxFeedbackLen>) -> DispatchResult {
 
 			// Check that the extrinsic was signed and get the signer.
 			let signer = ensure_signed(origin)?;
 
 			// Reject task and update storage.
-			Self::reject_completed_task(&signer, &task_id)?;
+			Self::reject_completed_task(&signer, &task_id, feedback)?;
 
 			// Emit a Task Rejected Event.
 			Self::deposit_event(Event::TaskRejected(signer, task_id));
@@ -425,7 +453,8 @@ pub mod pallet {
 	// *** Helper functions *** //
 	impl<T:Config> Pallet<T> {
 
-		pub fn new_task(from_initiator: &T::AccountId, title: &[u8], specification: &[u8], budget: &BalanceOf<T>, deadline: u64) -> Result<T::Hash, DispatchError> {
+		pub fn new_task(from_initiator: &T::AccountId, title: BoundedVec<u8, T::MaxTitleLen>, specification: BoundedVec<u8, T::MaxSpecificationLen>, budget: &BalanceOf<T>,
+			 deadline: u64, attachments: BoundedVec<u8, T::MaxAttachmentsLen>, keywords: BoundedVec<u8, T::MaxKeywordsLen>) -> Result<T::Hash, DispatchError> {
 
 			// Ensure user has a profile before creating a task
 			ensure!(pallet_profile::Pallet::<T>::has_profile(from_initiator).unwrap(), <Error<T>>::NoProfile);
@@ -434,14 +463,20 @@ pub mod pallet {
 
 			// Init Task Object
 			let task = Task::<T> {
-				title: title.to_vec(),
-				specification: specification.to_vec(),
+				title,
+				specification,
 				initiator: from_initiator.clone(),
 				volunteer: from_initiator.clone(),
 				status: Created,
 				budget: *budget,
 				current_owner: from_initiator.clone(),
 				deadline,
+				attachments,
+				keywords,
+				feedback: None,
+				created_at: <frame_system::Pallet<T>>::block_number(),
+				updated_at: Default::default(),
+				completed_at: Default::default(),
 			};
 
 			// Create hash of task
@@ -463,7 +498,8 @@ pub mod pallet {
 		}
 
 		// Task can be updated only after it has been created. Task that is already in progress can't be updated.
-		pub fn update_created_task(from_initiator: &T::AccountId, task_id: &T::Hash, new_title: &[u8], new_specification: &[u8], new_budget: &BalanceOf<T>, new_deadline: u64) -> Result<(), DispatchError> {
+		pub fn update_created_task(from_initiator: &T::AccountId, task_id: &T::Hash, new_title: BoundedVec<u8, T::MaxTitleLen>, new_specification: BoundedVec<u8, T::MaxSpecificationLen>, new_budget: &BalanceOf<T>, 
+			new_deadline: u64, attachments: BoundedVec<u8, T::MaxAttachmentsLen>, keywords: BoundedVec<u8, T::MaxKeywordsLen>) -> Result<(), DispatchError> {
 
 			// Check if task exists
 			let mut task = Self::tasks(&task_id).ok_or(<Error<T>>::TaskNotExist)?;
@@ -482,10 +518,13 @@ pub mod pallet {
 			ensure!(T::Time::now() < deadline_duration, Error::<T>::IncorrectDeadlineTimestamp);
 
 			// Init Task Object
-			task.title = new_title.to_vec();
-			task.specification = new_specification.to_vec();
+			task.title = new_title.clone();
+			task.specification = new_specification.clone();
 			task.budget = *new_budget;
 			task.deadline = new_deadline;
+			task.attachments = attachments.clone();
+			task.keywords = keywords.clone();
+			task.updated_at = <frame_system::Pallet<T>>::block_number();
 
 			// Insert task into Hashmap
 			<Tasks<T>>::insert(task_id, task);
@@ -552,6 +591,7 @@ pub mod pallet {
 			// Set current owner to initiator
 			task.current_owner = task.initiator.clone();
 			task.status = TaskStatus::Completed;
+			task.completed_at = <frame_system::Pallet<T>>::block_number();
 			let task_initiator = task.initiator.clone();
 
 			// Insert into update task
@@ -600,7 +640,7 @@ pub mod pallet {
 		}
 
 		// Task can be rejected by the creator, which places the task back into progress.
-		pub fn reject_completed_task(task_initiator: &T::AccountId, task_id: &T::Hash) -> Result<(), DispatchError> {
+		pub fn reject_completed_task(task_initiator: &T::AccountId, task_id: &T::Hash, feedback: BoundedVec<u8, T::MaxFeedbackLen>) -> Result<(), DispatchError> {
 
 			// Check if task exists
 			let mut task = Self::tasks(&task_id).ok_or(<Error<T>>::TaskNotExist)?;
@@ -623,6 +663,7 @@ pub mod pallet {
 			// Set current owner back to volunteer
 			task.current_owner = task.volunteer.clone();
 			task.status = TaskStatus::InProgress;
+			task.feedback = Some(feedback.clone());
 			let task_volunteer = task.volunteer.clone();
 
 			// Insert task

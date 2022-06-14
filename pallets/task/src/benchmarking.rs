@@ -34,35 +34,6 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
 	frame_system::Pallet::<T>::assert_last_event(generic_event.into());
 }
 
-// This creates and returns a `Task` object.
-fn create_task_info<T: Config>(_num_fields: u32) -> Task<T> {
-
-	// Populate with worst case scenario
-	let mut data = Vec::new();
-	data.push(u8::MAX);
-
-	// Populate data fields
-	let initiator: T::AccountId = whitelisted_caller();
-	let volunteer: T::AccountId = whitelisted_caller();
-	let owner: T::AccountId = whitelisted_caller();
-	let balance = <T as pallet::Config>::Currency::total_balance(&initiator);
-	let deadline = u64::MAX;
-	let status: TaskStatus = TaskStatus::InProgress;
-
-	// Create object
-	let info = Task {
-		title: data.clone(),
-		specification: data.clone(),
-		initiator: initiator,
-		volunteer: volunteer,
-		current_owner: owner,
-		status: status,
-		budget: balance,
-		deadline: deadline,
-	};
-
-	return info
-}
 
 // Helper function to create a profile
 fn create_profile<T: Config>(){
@@ -87,15 +58,17 @@ benchmarks! {
 		let x in 1 .. 2000;
 		let title = vec![0u8, s as u8];
 		let specification = vec![0u8, s as u8];
+		let attachments = vec![0u8, s as u8];
+		let keywords = vec![0u8, s as u8];
+		
 		let budget = <T as pallet::Config>::Currency::total_balance(&caller);
 
 		// Create profile before creating a task
 		create_profile::<T>();
-		create_task_info::<T>(1);
 
 	}:
 	/* the code to be benchmarked */
-	create_task(RawOrigin::Signed(caller.clone()), title, specification, budget, x.into())
+	create_task(RawOrigin::Signed(caller.clone()), title.try_into().unwrap(), specification.try_into().unwrap(), budget, x.into(), attachments.try_into().unwrap(), keywords.try_into().unwrap())
 
 	verify {
 		/* verifying final state */
@@ -115,16 +88,17 @@ benchmarks! {
 		let title = vec![0u8, s as u8];
 		let specification = vec![0u8, s as u8];
 		let budget = <T as pallet::Config>::Currency::total_balance(&caller);
+		let attachments = vec![0u8, s as u8];
+		let keywords = vec![0u8, s as u8];
 
 		// Create profile before creating a task
 		create_profile::<T>();
-		create_task_info::<T>(1);
-		let _ = PalletTask::<T>::create_task(RawOrigin::Signed(caller.clone()).into(), title.clone(), specification.clone(), budget, x.into());
+		let _ = PalletTask::<T>::create_task(RawOrigin::Signed(caller.clone()).into(), title.clone().try_into().unwrap(), specification.clone().try_into().unwrap(), budget, x.into(), attachments.clone().try_into().unwrap(), keywords.clone().try_into().unwrap());
 		let hash_task = PalletTask::<T>::tasks_owned(&caller)[0];
 
 	}:
 	/* the code to be benchmarked */
-	update_task(RawOrigin::Signed(caller.clone()), hash_task, title, specification, budget, x.into())
+	update_task(RawOrigin::Signed(caller.clone()), hash_task, title.try_into().unwrap(), specification.try_into().unwrap(), budget, x.into(), attachments.try_into().unwrap(), keywords.try_into().unwrap())
 
 	verify {
 		/* verifying final state */
@@ -145,10 +119,12 @@ benchmarks! {
 		let title = vec![0u8, s as u8];
 		let specification = vec![0u8, s as u8];
 		let budget = <T as pallet::Config>::Currency::total_balance(&task_creator);
+		let attachments = vec![0u8, s as u8];
+		let keywords = vec![0u8, s as u8];
 
 		// Create profile before creating a task
 		create_profile::<T>();
-		let _ = PalletTask::<T>::create_task(RawOrigin::Signed(task_creator.clone()).into(), title, specification, budget, x.into());
+		let _ = PalletTask::<T>::create_task(RawOrigin::Signed(task_creator.clone()).into(), title.try_into().unwrap(), specification.try_into().unwrap(), budget, x.into(), attachments.try_into().unwrap(), keywords.try_into().unwrap());
 		let hash_task = PalletTask::<T>::tasks_owned(&task_creator)[0];
 
 	}: start_task(RawOrigin::Signed(volunteer.clone()), hash_task)
@@ -170,10 +146,12 @@ benchmarks! {
 		let title = vec![0u8, s as u8];
 		let specification = vec![0u8, s as u8];
 		let budget = <T as pallet::Config>::Currency::total_balance(&task_creator);
+		let attachments = vec![0u8, s as u8];
+		let keywords = vec![0u8, s as u8];
 
 		// Create profile before creating a task
 		create_profile::<T>();
-		let _ = PalletTask::<T>::create_task(RawOrigin::Signed(task_creator.clone()).into(), title, specification, budget, x.into());
+		let _ = PalletTask::<T>::create_task(RawOrigin::Signed(task_creator.clone()).into(), title.try_into().unwrap(), specification.try_into().unwrap(), budget, x.into(), attachments.try_into().unwrap(), keywords.try_into().unwrap());
 		let hash_task = PalletTask::<T>::tasks_owned(&task_creator)[0];
 
 	}: remove_task(RawOrigin::Signed(task_creator.clone()), hash_task)
@@ -195,10 +173,12 @@ benchmarks! {
 		let title = vec![0u8, s as u8];
 		let specification = vec![0u8, s as u8];
 		let budget = <T as pallet::Config>::Currency::total_balance(&task_creator);
+		let attachments = vec![0u8, s as u8];
+		let keywords = vec![0u8, s as u8];
 
 		// Create profile before creating a task
 		create_profile::<T>();
-		let _ = PalletTask::<T>::create_task(RawOrigin::Signed(task_creator.clone()).into(), title, specification, budget, x.into());
+		let _ = PalletTask::<T>::create_task(RawOrigin::Signed(task_creator.clone()).into(), title.try_into().unwrap(), specification.try_into().unwrap(), budget, x.into(), attachments.try_into().unwrap(), keywords.try_into().unwrap());
 		let hash_task = PalletTask::<T>::tasks_owned(&task_creator)[0];
 		let _ = PalletTask::<T>::start_task(RawOrigin::Signed(volunteer.clone()).into(), hash_task.clone());
 
@@ -221,10 +201,12 @@ benchmarks! {
 		let title = vec![0u8, s as u8];
 		let specification = vec![0u8, s as u8];
 		let budget = <T as pallet::Config>::Currency::total_balance(&task_creator);
+		let attachments = vec![0u8, s as u8];
+		let keywords = vec![0u8, s as u8];
 
 		// Create profile before creating a task
 		create_profile::<T>();
-		let _ = PalletTask::<T>::create_task(RawOrigin::Signed(task_creator.clone()).into(), title, specification, budget, x.into());
+		let _ = PalletTask::<T>::create_task(RawOrigin::Signed(task_creator.clone()).into(), title.try_into().unwrap(), specification.try_into().unwrap(), budget, x.into(), attachments.try_into().unwrap(), keywords.try_into().unwrap());
 		let hash_task = PalletTask::<T>::tasks_owned(&task_creator)[0];
 		let _ = PalletTask::<T>::start_task(RawOrigin::Signed(volunteer.clone()).into(), hash_task.clone());
 		let _ = PalletTask::<T>::complete_task(RawOrigin::Signed(volunteer.clone()).into(), hash_task.clone());
@@ -247,16 +229,20 @@ benchmarks! {
 		let x in 1 .. 4000;
 		let title = vec![0u8, s as u8];
 		let specification = vec![0u8, s as u8];
+		let feedback = vec![0u8, s as u8];
 		let budget = <T as pallet::Config>::Currency::total_balance(&task_creator);
+		let attachments = vec![0u8, s as u8];
+		let keywords = vec![0u8, s as u8];
+		let feedback = vec![0u8, s as u8];
 
 		// Create profile before creating a task
 		create_profile::<T>();
-		let _ = PalletTask::<T>::create_task(RawOrigin::Signed(task_creator.clone()).into(), title, specification, budget, x.into());
+		let _ = PalletTask::<T>::create_task(RawOrigin::Signed(task_creator.clone()).into(), title.try_into().unwrap(), specification.try_into().unwrap(), budget, x.into(), attachments.try_into().unwrap(), keywords.try_into().unwrap());
 		let hash_task = PalletTask::<T>::tasks_owned(&task_creator)[0];
 		let _ = PalletTask::<T>::start_task(RawOrigin::Signed(volunteer.clone()).into(), hash_task.clone());
 		let _ = PalletTask::<T>::complete_task(RawOrigin::Signed(volunteer.clone()).into(), hash_task.clone());
 
-	}: reject_task(RawOrigin::Signed(task_creator.clone()), hash_task)
+	}: reject_task(RawOrigin::Signed(task_creator.clone()), hash_task, feedback.try_into().unwrap())
 		/* the code to be benchmarked */
 
 	verify {
