@@ -789,35 +789,37 @@ fn delete_task_after_deadline() {
 	});
 }
 
-// #[test]
-// fn block_time_is_added_when_task_is_updated() {
-// 	new_test_ext().execute_with( || {
-// 		System::set_block_number(1);
+#[test]
+fn block_time_is_added_when_task_is_updated() {
+	new_test_ext().execute_with( || {
+		System::set_block_number(1);
 
-// 		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS));
+		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS));
 
-// 		// Ensure new task can be created.
-// 		assert_ok!(Task::create_task(Origin::signed(1), title(), spec(), BUDGET, get_deadline(), attachments(), keywords()));
+		// Ensure new task can be created.
+		assert_ok!(Task::create_task(Origin::signed(1), title(), spec(), BUDGET, get_deadline(), attachments(), keywords()));
 
-// 		// Get hash of task owned
-// 		let hash = Task::tasks_owned(1)[0];
-// 		let task = Task::tasks(hash).expect("should found the task");
+		// Get hash of task owned
+		let hash = Task::tasks_owned(1)[0];
+		let task = Task::tasks(hash).expect("should found the task");
 
-// 		// Ensure block time of task creation is correct
-// 		assert_eq!(task.created_at, 1);
+		// Ensure block time of task creation is correct
+		assert_eq!(task.created_at, 1);
 
-// 		System::set_block_number(3);
-// 		assert_ok!(Task::update_task(Origin::signed(1), hash, title2(), spec2(), BUDGET2, get_deadline(), attachments2(), keywords2()));
+		System::set_block_number(3);
+		assert_ok!(Task::update_task(Origin::signed(1), hash, title2(), spec2(), BUDGET2, get_deadline(), attachments2(), keywords2()));
 
-// 		assert_eq!(task.updated_at, 3);
+		let task = Task::tasks(hash).expect("should found the task");
+		assert_eq!(task.updated_at, 3);
 
-// 		// Ensure task is started by new current_owner (user 2)
-// 		assert_ok!(Task::start_task(Origin::signed(2), hash));
+		// Ensure task is started by new current_owner (user 2)
+		assert_ok!(Task::start_task(Origin::signed(2), hash));
 
-// 		System::set_block_number(100);
-// 		// Ensure task is completed by current current_owner (user 2)
-// 		assert_ok!(Task::complete_task(Origin::signed(2), hash));
-// 		assert_eq!(task.completed_at, 100);
+		System::set_block_number(100);
+		// Ensure task is completed by current current_owner (user 2)
+		assert_ok!(Task::complete_task(Origin::signed(2), hash));
+		let task = Task::tasks(hash).expect("should found the task");
+		assert_eq!(task.completed_at, 100);
 
-// 	})
-// }
+	})
+}
