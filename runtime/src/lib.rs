@@ -278,6 +278,16 @@ parameter_types! {
 	// Max tasks per user.
 	pub const MaxTasksOwned: u32 = 77;
 	pub TaskPalletID: PalletId = PalletId(*b"task_pal");
+	#[derive(TypeInfo, MaxEncodedLen, Encode)]
+	pub const MaxTitleLen: u32 = 256;
+	#[derive(TypeInfo, MaxEncodedLen, Encode)]
+	pub const MaxSpecificationLen: u32 = 256;
+	#[derive(TypeInfo, MaxEncodedLen, Encode)]
+	pub const MaxAttachmentsLen: u32 = 5000;
+	#[derive(TypeInfo, MaxEncodedLen, Encode)]
+	pub const MaxFeedbackLen: u32 = 5000;
+	#[derive(TypeInfo, MaxEncodedLen, Encode)]
+	pub const MaxKeywordsLen: u32 = 100;
 }
 
 // Configure the pallet-task.
@@ -288,6 +298,11 @@ impl pallet_task::Config for Runtime {
 	type Time = Timestamp;
 	type WeightInfo = pallet_task::weights::SubstrateWeight<Runtime>;
 	type PalletId = TaskPalletID;
+	type MaxTitleLen = MaxTitleLen;
+	type MaxSpecificationLen = MaxSpecificationLen;
+	type MaxAttachmentsLen = MaxAttachmentsLen;
+	type MaxFeedbackLen = MaxFeedbackLen;
+	type MaxKeywordsLen = MaxKeywordsLen;
 }
 
 // Configure the pallet-dao.
