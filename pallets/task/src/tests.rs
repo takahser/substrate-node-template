@@ -57,9 +57,6 @@ fn feedback() -> BoundedVec<u8, MaxFeedbackLen> {
 	vec![1u8, 4].try_into().unwrap()
 }
 
-fn feedback2() -> BoundedVec<u8, MaxFeedbackLen> {
-	vec![1u8, 4].try_into().unwrap()
-}
 
 fn get_deadline() -> u64 {
 		// deadline is current time + 1 hour
@@ -96,7 +93,7 @@ fn create_new_task(){
 		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS));
 
 		// Ensure new task can be created.
-		assert_ok!(Task::create_task(Origin::signed(1), title(), spec(), BUDGET, get_deadline(), attachments(), keywords(), feedback()));
+		assert_ok!(Task::create_task(Origin::signed(1), title(), spec(), BUDGET, get_deadline(), attachments(), keywords()));
 	});
 }
 
@@ -109,7 +106,7 @@ fn fund_transfer_on_create_task(){
 
 		assert_eq!(Balances::balance(&1), 1000);
 		// Ensure new task can be created.
-		assert_ok!(Task::create_task(Origin::signed(1), title(), spec() , BUDGET, get_deadline(), attachments(), keywords(), feedback()));
+		assert_ok!(Task::create_task(Origin::signed(1), title(), spec() , BUDGET, get_deadline(), attachments(), keywords()));
 		assert_eq!(Balances::balance(&1), 993);
 		let task_id = Task::tasks_owned(&1)[0];
 		assert_eq!(Balances::balance(&Task::account_id(&task_id)), BUDGET);
@@ -124,7 +121,7 @@ fn increase_task_count_when_creating_task(){
 		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS));
 
 		// Ensure new task can be created.
-		assert_ok!(Task::create_task(Origin::signed(1), title(), spec() , BUDGET, get_deadline(), attachments(), keywords(), feedback()));
+		assert_ok!(Task::create_task(Origin::signed(1), title(), spec() , BUDGET, get_deadline(), attachments(), keywords()));
 
 		// Assert that count is incremented by 1 after task creation
 		assert_eq!(Task::task_count(), 1);
@@ -139,8 +136,8 @@ fn increase_task_count_when_creating_two_tasks(){
 		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS));
 
 		// Ensure new task can be created.
-		assert_ok!(Task::create_task(Origin::signed(1), title(), spec(), BUDGET, get_deadline(), attachments(), keywords(), feedback()));
-		assert_ok!(Task::create_task(Origin::signed(1), title(), spec2(), BUDGET2, get_deadline(), attachments(), keywords(), feedback()));
+		assert_ok!(Task::create_task(Origin::signed(1), title(), spec(), BUDGET, get_deadline(), attachments(), keywords()));
+		assert_ok!(Task::create_task(Origin::signed(1), title(), spec2(), BUDGET2, get_deadline(), attachments(), keywords()));
 
 		// Assert that count is incremented to 2 after task creation
 		assert_eq!(Task::task_count(), 2);
@@ -159,14 +156,14 @@ fn cant_own_more_tax_than_max_tasks(){
 		// Create 77 tasks  ExceedMaxTasksOwned
 		for _n in 0..77 {
 			// Ensure new task can be created.
-			assert_ok!(Task::create_task(Origin::signed(1), title(), spec(), BUDGET, get_deadline(), attachments(), keywords(), feedback()));
+			assert_ok!(Task::create_task(Origin::signed(1), title(), spec(), BUDGET, get_deadline(), attachments(), keywords()));
 		}
 
 		// Assert that count is incremented to 2 after task creation
 		assert_eq!(Task::task_count(), 77);
 
 		// Assert that when creating the 77 Task, Error is thrown
-		assert_noop!(Task::create_task(Origin::signed(1), title(), spec2(), BUDGET, get_deadline(), attachments(), keywords(), feedback()), Error::<Test>::ExceedMaxTasksOwned);
+		assert_noop!(Task::create_task(Origin::signed(1), title(), spec2(), BUDGET, get_deadline(), attachments(), keywords()), Error::<Test>::ExceedMaxTasksOwned);
 
 	});
 
@@ -179,7 +176,7 @@ fn assign_task_to_current_owner(){
 		// Profile is necessary for task creation
 		assert_ok!(Profile::create_profile(Origin::signed(10), username(), interests(), HOURS));
 
-		assert_ok!(Task::create_task(Origin::signed(10), title(), spec(), BUDGET, get_deadline(), attachments(), keywords(), feedback()));
+		assert_ok!(Task::create_task(Origin::signed(10), title(), spec(), BUDGET, get_deadline(), attachments(), keywords()));
 
 		// Get task through the hash
 		let hash = Task::tasks_owned(10)[0];
@@ -196,7 +193,7 @@ fn verify_inputs_outputs_to_tasks(){
 		// Profile is necessary for task creation
 		assert_ok!(Profile::create_profile(Origin::signed(10), username(), interests(), HOURS));
 
-		assert_ok!(Task::create_task(Origin::signed(10), title(), spec(), BUDGET, get_deadline(), attachments(), keywords(), feedback()));
+		assert_ok!(Task::create_task(Origin::signed(10), title(), spec(), BUDGET, get_deadline(), attachments(), keywords()));
 
 		// Get task through the hash
 		let hash = Task::tasks_owned(10)[0];
@@ -209,7 +206,6 @@ fn verify_inputs_outputs_to_tasks(){
 		assert_eq!(task.title, title());
 		assert_eq!(task.attachments, attachments());
 		assert_eq!(task.keywords, keywords());
-		assert_eq!(task.feedback, feedback());
 	});
 }
 
@@ -220,7 +216,7 @@ fn task_can_be_updated_after_it_is_created(){
 		// Profile is necessary for task creation
 		assert_ok!(Profile::create_profile(Origin::signed(10), username(), interests(), HOURS));
 
-		assert_ok!(Task::create_task(Origin::signed(10), title(), spec(), BUDGET, get_deadline(), attachments(), keywords(), feedback()));
+		assert_ok!(Task::create_task(Origin::signed(10), title(), spec(), BUDGET, get_deadline(), attachments(), keywords()));
 
 		// Get task through the hash
 		let hash = Task::tasks_owned(10)[0];
@@ -229,7 +225,7 @@ fn task_can_be_updated_after_it_is_created(){
 		// assert the budget is correct
 		assert_eq!(task.budget, BUDGET);
 
-		assert_ok!(Task::update_task(Origin::signed(10), hash, title2(), spec2(), BUDGET2, get_deadline(), attachments2(), keywords2(), feedback2()));
+		assert_ok!(Task::update_task(Origin::signed(10), hash, title2(), spec2(), BUDGET2, get_deadline(), attachments2(), keywords2()));
 
 		// Get task through the hash
 		let hash = Task::tasks_owned(10)[0];
@@ -241,7 +237,6 @@ fn task_can_be_updated_after_it_is_created(){
 		assert_eq!(task.title, title2());
 		assert_eq!(task.attachments, attachments2());
 		assert_eq!(task.keywords, keywords2());
-		assert_eq!(task.feedback, feedback2());
 	});
 }
 
@@ -252,13 +247,13 @@ fn task_can_be_updated_only_by_one_who_created_it(){
 		// Profile is necessary for task creation
 		assert_ok!(Profile::create_profile(Origin::signed(10), username(), interests(), HOURS));
 
-		assert_ok!(Task::create_task(Origin::signed(10), title(), spec(), BUDGET, get_deadline(), attachments(), keywords(), feedback()));
+		assert_ok!(Task::create_task(Origin::signed(10), title(), spec(), BUDGET, get_deadline(), attachments(), keywords()));
 
 		// Get task through the hash
 		let hash = Task::tasks_owned(10)[0];
 
 		// Throw error when someone other than creator tries to update task
-		assert_noop!(Task::update_task(Origin::signed(7), hash, title(), spec(), BUDGET2, get_deadline(), attachments2(), keywords2(), feedback2()), Error::<Test>::OnlyInitiatorUpdatesTask);
+		assert_noop!(Task::update_task(Origin::signed(7), hash, title(), spec(), BUDGET2, get_deadline(), attachments2(), keywords2()), Error::<Test>::OnlyInitiatorUpdatesTask);
 
 	});
 }
@@ -271,7 +266,7 @@ fn task_can_be_updated_only_after_it_has_been_created(){
 		assert_ok!(Profile::create_profile(Origin::signed(10), username(), interests(), HOURS));
 
 		// Ensure task can be created
-		assert_ok!(Task::create_task(Origin::signed(10), title(), spec(), BUDGET, get_deadline(), attachments(), keywords(), feedback()));
+		assert_ok!(Task::create_task(Origin::signed(10), title(), spec(), BUDGET, get_deadline(), attachments(), keywords()));
 
 		// Get task through the hash
 		let hash = Task::tasks_owned(10)[0];
@@ -280,7 +275,7 @@ fn task_can_be_updated_only_after_it_has_been_created(){
 		assert_ok!(Task::start_task(Origin::signed(2), hash));
 
 		// Throw error when someone other than creator tries to update task
-		assert_noop!(Task::update_task(Origin::signed(10), hash, title(), spec(), BUDGET2, get_deadline(), attachments2(), keywords2(), feedback2()), Error::<Test>::NoPermissionToUpdate);
+		assert_noop!(Task::update_task(Origin::signed(10), hash, title(), spec(), BUDGET2, get_deadline(), attachments2(), keywords2()), Error::<Test>::NoPermissionToUpdate);
 
 	});
 }
@@ -294,7 +289,7 @@ fn start_tasks_assigns_new_current_owner(){
 		assert_ok!(Profile::create_profile(Origin::signed(2), username(), interests(), HOURS));
 
 		// Ensure new task can be created.
-		assert_ok!(Task::create_task(Origin::signed(1), title(), spec(), BUDGET, get_deadline(), attachments(), keywords(), feedback()));
+		assert_ok!(Task::create_task(Origin::signed(1), title(), spec(), BUDGET, get_deadline(), attachments(), keywords()));
 
 		// Ensure new task is assigned to new current_owner (user 1)
 		let hash = Task::tasks_owned(1)[0];
@@ -320,7 +315,7 @@ fn start_tasks_assigns_task_to_volunteer(){
 		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS));
 
 		// Ensure new task can be created.
-		assert_ok!(Task::create_task(Origin::signed(1), title(), spec(), BUDGET, get_deadline(), attachments(), keywords(), feedback()));
+		assert_ok!(Task::create_task(Origin::signed(1), title(), spec(), BUDGET, get_deadline(), attachments(), keywords()));
 
 		// Ensure new task is assigned to new current_owner (user 1)
 		let hash = Task::tasks_owned(1)[0];
@@ -346,7 +341,7 @@ fn completing_tasks_assigns_new_current_owner(){
 		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS));
 
 		// Ensure new task can be created.
-		assert_ok!(Task::create_task(Origin::signed(1), title(), spec(), BUDGET, get_deadline(), attachments(), keywords(), feedback()));
+		assert_ok!(Task::create_task(Origin::signed(1), title(), spec(), BUDGET, get_deadline(), attachments(), keywords()));
 
 		// Ensure new task is assigned to new current_owner (user 1)
 		let hash = Task::tasks_owned(1)[0];
@@ -378,7 +373,7 @@ fn the_volunteer_is_different_from_task_creator(){
 		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS));
 
 		// Ensure new task can be created.
-		assert_ok!(Task::create_task(Origin::signed(1), title(), spec(), BUDGET, get_deadline(), attachments(), keywords(), feedback()));
+		assert_ok!(Task::create_task(Origin::signed(1), title(), spec(), BUDGET, get_deadline(), attachments(), keywords()));
 
 		let hash = Task::tasks_owned(1)[0];
 		assert_noop!(Task::start_task(Origin::signed(1), hash), Error::<Test>::NoPermissionToStart);
@@ -394,7 +389,7 @@ fn task_can_only_be_started_once(){
 		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS));
 
 		// Ensure new task can be created.
-		assert_ok!(Task::create_task(Origin::signed(1), title(), spec(), BUDGET, get_deadline(), attachments(), keywords(), feedback()));
+		assert_ok!(Task::create_task(Origin::signed(1), title(), spec(), BUDGET, get_deadline(), attachments(), keywords()));
 
 		// Ensure that task can't be started once its started
 		let hash = Task::tasks_owned(1)[0];
@@ -411,7 +406,7 @@ fn task_can_only_be_finished_by_the_user_who_started_it(){
 		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS));
 
 		// Ensure new task can be created.
-		assert_ok!(Task::create_task(Origin::signed(1), title(), spec(), BUDGET, get_deadline(), attachments(), keywords(), feedback()));
+		assert_ok!(Task::create_task(Origin::signed(1), title(), spec(), BUDGET, get_deadline(), attachments(), keywords()));
 
 		// Ensure that task can't be started once its started
 		let hash = Task::tasks_owned(1)[0];
@@ -430,7 +425,7 @@ fn task_can_be_removed_by_owner(){
 		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS));
 
 		// Ensure new task can be created.
-		assert_ok!(Task::create_task(Origin::signed(1), title(), spec(), BUDGET, get_deadline(), attachments(), keywords(), feedback()));
+		assert_ok!(Task::create_task(Origin::signed(1), title(), spec(), BUDGET, get_deadline(), attachments(), keywords()));
 
 		// Ensure that task can't be started once its started
 		let hash = Task::tasks_owned(1)[0];
@@ -452,7 +447,7 @@ fn task_can_be_removed_only_when_status_is_created(){
 		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS));
 
 		// Ensure new task can be created.
-		assert_ok!(Task::create_task(Origin::signed(1), title(), spec(), 7, get_deadline(), attachments(), keywords(), feedback()));
+		assert_ok!(Task::create_task(Origin::signed(1), title(), spec(), 7, get_deadline(), attachments(), keywords()));
 
 		// Ensure that task can't be started once its started
 		let hash = Task::tasks_owned(1)[0];
@@ -474,7 +469,7 @@ fn only_creator_accepts_task(){
 		assert_ok!(Profile::create_profile(Origin::signed(2), username(), interests(), HOURS));
 
 		// Ensure new task can be created.
-		assert_ok!(Task::create_task(Origin::signed(1), title(), spec(), BUDGET, get_deadline(), attachments(), keywords(), feedback()));
+		assert_ok!(Task::create_task(Origin::signed(1), title(), spec(), BUDGET, get_deadline(), attachments(), keywords()));
 
 		// Ensure new task is assigned to new current_owner (user 1)
 		let hash = Task::tasks_owned(1)[0];
@@ -510,7 +505,7 @@ fn accepted_task_is_added_to_completed_task_for_volunteer(){
 		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS));
 		assert_ok!(Profile::create_profile(Origin::signed(2), username(), interests(), HOURS));
 
-		assert_ok!(Task::create_task(Origin::signed(1), title(), spec(), BUDGET, get_deadline(), attachments(), keywords(), feedback()));
+		assert_ok!(Task::create_task(Origin::signed(1), title(), spec(), BUDGET, get_deadline(), attachments(), keywords()));
 
 		let hash = Task::tasks_owned(1)[0];
 		assert_ok!(Task::start_task(Origin::signed(2), hash));
@@ -534,7 +529,7 @@ fn volunteer_gets_paid_on_task_completion(){
 		assert_ok!(Profile::create_profile(Origin::signed(2), username(), interests(), HOURS));
 
 		// Ensure new task can be created.
-		assert_ok!(Task::create_task(Origin::signed(1), title(), spec(), BUDGET, get_deadline(), attachments(), keywords(), feedback()));
+		assert_ok!(Task::create_task(Origin::signed(1), title(), spec(), BUDGET, get_deadline(), attachments(), keywords()));
 
 		let hash = Task::tasks_owned(1)[0];
 		// Ensure task is started by new current_owner (user 2)
@@ -562,7 +557,7 @@ fn only_started_task_can_be_completed(){
 		assert_ok!(Profile::create_profile(Origin::signed(2), username(), interests(), HOURS));
 
 		// Ensure new task can be created.
-		assert_ok!(Task::create_task(Origin::signed(1), title(), spec(), BUDGET, get_deadline(), attachments(), keywords(), feedback()));
+		assert_ok!(Task::create_task(Origin::signed(1), title(), spec(), BUDGET, get_deadline(), attachments(), keywords()));
 
 		// Ensure new task is assigned to new current_owner (user 1)
 		let hash = Task::tasks_owned(1)[0];
@@ -589,7 +584,7 @@ fn when_task_is_accepted_ownership_is_cleared(){
 		assert_ok!(Profile::create_profile(Origin::signed(2), username(), interests(), HOURS));
 
 		// Ensure new task can be created.
-		assert_ok!(Task::create_task(Origin::signed(1), title(), spec(), BUDGET, get_deadline(), attachments(), keywords(), feedback()));
+		assert_ok!(Task::create_task(Origin::signed(1), title(), spec(), BUDGET, get_deadline(), attachments(), keywords()));
 
 		// Ensure new task is assigned to new current_owner (user 1)
 		let hash = Task::tasks_owned(1)[0];
@@ -629,7 +624,7 @@ fn decrease_task_count_when_accepting_task(){
 		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS));
 
 		// Ensure new task can be created.
-		assert_ok!(Task::create_task(Origin::signed(1), title(), spec(), BUDGET, get_deadline(), attachments(), keywords(), feedback()));
+		assert_ok!(Task::create_task(Origin::signed(1), title(), spec(), BUDGET, get_deadline(), attachments(), keywords()));
 
 		// Get hash of task owned
 		let hash = Task::tasks_owned(1)[0];
@@ -649,7 +644,7 @@ fn task_can_be_rejected_by_creator(){
 		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS));
 
 		// Ensure new task can be created.
-		assert_ok!(Task::create_task(Origin::signed(1), title(), spec(), BUDGET, get_deadline(), attachments(), keywords(), feedback()));
+		assert_ok!(Task::create_task(Origin::signed(1), title(), spec(), BUDGET, get_deadline(), attachments(), keywords()));
 
 		// Get hash of task owned
 		let hash = Task::tasks_owned(1)[0];
@@ -666,13 +661,49 @@ fn task_can_be_rejected_by_creator(){
 		assert_ok!(Task::complete_task(Origin::signed(2), hash));
 
 		// Task is rejected by creator
-		assert_ok!(Task::reject_task(Origin::signed(1), hash));
+		assert_ok!(Task::reject_task(Origin::signed(1), hash, feedback()));
 
 		// Assert that the status is back in progress and, owner is the volunteer
 		let hash = Task::tasks_owned(2)[0];
 		let task = Task::tasks(hash).expect("should found the task");
 		assert_eq!(task.current_owner, 2);
 		assert_eq!(task.status, TaskStatus::InProgress);
+
+	});
+}
+
+
+#[test]
+fn feedback_is_given_when_task_is_rejected(){
+	new_test_ext().execute_with( || {
+
+		// Profile is necessary for task creation
+		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS));
+
+		// Ensure new task can be created.
+		assert_ok!(Task::create_task(Origin::signed(1), title(), spec(), BUDGET, get_deadline(), attachments(), keywords()));
+
+		// Get hash of task owned
+		let hash = Task::tasks_owned(1)[0];
+		let _task = Task::tasks(hash).expect("should found the task");
+
+		// Ensure task is started by new current_owner (user 2)
+		assert_ok!(Task::start_task(Origin::signed(2), hash));
+
+		// Ensure when task is started user1 has 0 tasks, and user2 has 1
+		assert_eq!(Task::tasks_owned(1).len(), 0);
+		assert_eq!(Task::tasks_owned(2).len(), 1);
+
+		// Ensure task is completed by current current_owner (user 2)
+		assert_ok!(Task::complete_task(Origin::signed(2), hash));
+
+		// Task is rejected by creator
+		assert_ok!(Task::reject_task(Origin::signed(1), hash, feedback()));
+
+		// Assert that the status is back in progress and, owner is the volunteer
+		let hash = Task::tasks_owned(2)[0];
+		let task = Task::tasks(hash).expect("should found the task");
+		assert_eq!(task.feedback, Some(feedback()));
 
 	});
 }
@@ -689,7 +720,7 @@ fn increase_profile_reputation_when_task_completed(){
 		assert_ok!(Profile::create_profile(Origin::signed(2), username(), interests(), HOURS));
 
 		// Ensure new task can be created.
-		assert_ok!(Task::create_task(Origin::signed(1), title(), spec(), BUDGET, get_deadline(), attachments(), keywords(), feedback()));
+		assert_ok!(Task::create_task(Origin::signed(1), title(), spec(), BUDGET, get_deadline(), attachments(), keywords()));
 
 		// Ensure new task is assigned to new current_owner (user 1)
 		let hash = Task::tasks_owned(1)[0];
@@ -723,7 +754,7 @@ fn only_add_reputation_when_task_has_been_accepted(){
 		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS));
 
 		// Ensure new task can be created.
-		assert_ok!(Task::create_task(Origin::signed(1), title(), spec(), BUDGET, get_deadline(), attachments(), keywords(), feedback()));
+		assert_ok!(Task::create_task(Origin::signed(1), title(), spec(), BUDGET, get_deadline(), attachments(), keywords()));
 
 		// Get hash of task owned
 		let hash = Task::tasks_owned(1)[0];
@@ -747,7 +778,7 @@ fn delete_task_after_deadline() {
 		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS));
 
 		// Ensure new task can be created.
-		assert_ok!(Task::create_task(Origin::signed(1), title(), spec(), BUDGET, get_deadline(), attachments(), keywords(), feedback()));
+		assert_ok!(Task::create_task(Origin::signed(1), title(), spec(), BUDGET, get_deadline(), attachments(), keywords()));
 		let hash = Task::tasks_owned(1)[0];
 		let task = Task::tasks(hash);
 		assert!(task.is_some());
@@ -766,7 +797,7 @@ fn delete_task_after_deadline() {
 // 		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS));
 
 // 		// Ensure new task can be created.
-// 		assert_ok!(Task::create_task(Origin::signed(1), title(), spec(), BUDGET, get_deadline(), attachments(), keywords(), feedback()));
+// 		assert_ok!(Task::create_task(Origin::signed(1), title(), spec(), BUDGET, get_deadline(), attachments(), keywords()));
 
 // 		// Get hash of task owned
 // 		let hash = Task::tasks_owned(1)[0];
@@ -776,7 +807,7 @@ fn delete_task_after_deadline() {
 // 		assert_eq!(task.created_at, 1);
 
 // 		System::set_block_number(3);
-// 		assert_ok!(Task::update_task(Origin::signed(1), hash, title2(), spec2(), BUDGET2, get_deadline(), attachments2(), keywords2(), feedback2()));
+// 		assert_ok!(Task::update_task(Origin::signed(1), hash, title2(), spec2(), BUDGET2, get_deadline(), attachments2(), keywords2()));
 
 // 		assert_eq!(task.updated_at, 3);
 
