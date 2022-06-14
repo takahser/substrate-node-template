@@ -140,7 +140,7 @@ pub mod pallet {
 		pub deadline: u64,
 		pub attachments: BoundedVec<u8, T::MaxAttachmentsLen>,
 		pub keywords: BoundedVec<u8, T::MaxKeywordsLen>,
-		pub feedback: BoundedVec<u8, T::MaxFeedbackLen>,
+		pub feedback: Option<BoundedVec<u8, T::MaxFeedbackLen>>,
 		pub created_at: <T as frame_system::Config>::BlockNumber,
 		pub updated_at:<T as frame_system::Config>::BlockNumber,
 		pub completed_at: <T as frame_system::Config>::BlockNumber,
@@ -280,13 +280,13 @@ pub mod pallet {
 		/// Function call that creates tasks.  [ origin, specification, budget, deadline]
 		#[pallet::weight(<T as Config>::WeightInfo::create_task(0,0))]
 		pub fn create_task(origin: OriginFor<T>, title: BoundedVec<u8, T::MaxTitleLen>, specification: BoundedVec<u8, T::MaxSpecificationLen>, budget: BalanceOf<T>, 
-			deadline: u64, attachments: BoundedVec<u8, T::MaxAttachmentsLen>, keywords: BoundedVec<u8, T::MaxKeywordsLen>, feedback: BoundedVec<u8, T::MaxFeedbackLen>) -> DispatchResultWithPostInfo {
+			deadline: u64, attachments: BoundedVec<u8, T::MaxAttachmentsLen>, keywords: BoundedVec<u8, T::MaxKeywordsLen>) -> DispatchResultWithPostInfo {
 
 			// Check that the extrinsic was signed and get the signer.
 			let signer = ensure_signed(origin)?;
 
 			// Update storage.
-			let task_id = Self::new_task(&signer, title, specification, &budget, deadline, attachments, keywords, feedback)?;
+			let task_id = Self::new_task(&signer, title, specification, &budget, deadline, attachments, keywords)?;
 
 			// Transfer balance amount to escrow account
 			let sub_account = Self::account_id(&task_id);
@@ -303,13 +303,13 @@ pub mod pallet {
 		/// Note: budget specified in this call is added to budget provided in create_task() call.
 		#[pallet::weight(<T as Config>::WeightInfo::update_task(0,0))]
 		pub fn update_task(origin: OriginFor<T>, task_id: T::Hash, title: BoundedVec<u8, T::MaxTitleLen>, specification: BoundedVec<u8, T::MaxSpecificationLen>, 
-			budget: BalanceOf<T>, deadline: u64, attachments: BoundedVec<u8, T::MaxAttachmentsLen>, keywords: BoundedVec<u8, T::MaxKeywordsLen>, feedback: BoundedVec<u8, T::MaxFeedbackLen>) -> DispatchResultWithPostInfo {
+			budget: BalanceOf<T>, deadline: u64, attachments: BoundedVec<u8, T::MaxAttachmentsLen>, keywords: BoundedVec<u8, T::MaxKeywordsLen>) -> DispatchResultWithPostInfo {
 
 			// Check that the extrinsic was signed and get the signer.
 			let signer = ensure_signed(origin)?;
 
 			// Update storage.
-			let _task_id = Self::update_created_task(&signer, &task_id, title, specification, &budget, deadline, attachments, keywords, feedback)?;
+			let _task_id = Self::update_created_task(&signer, &task_id, title, specification, &budget, deadline, attachments, keywords)?;
 
 			// Update balance of escrow account
 			let sub_account = Self::account_id(&task_id);
@@ -400,13 +400,13 @@ pub mod pallet {
 
 		/// Function to reject a completed task. [origin, task_id]
 		#[pallet::weight(<T as Config>::WeightInfo::reject_task(0,0))]
-		pub fn reject_task(origin: OriginFor<T>, task_id: T::Hash) -> DispatchResult {
+		pub fn reject_task(origin: OriginFor<T>, task_id: T::Hash, feedback: BoundedVec<u8, T::MaxFeedbackLen>) -> DispatchResult {
 
 			// Check that the extrinsic was signed and get the signer.
 			let signer = ensure_signed(origin)?;
 
 			// Reject task and update storage.
-			Self::reject_completed_task(&signer, &task_id)?;
+			Self::reject_completed_task(&signer, &task_id, feedback)?;
 
 			// Emit a Task Rejected Event.
 			Self::deposit_event(Event::TaskRejected(signer, task_id));
@@ -449,7 +449,7 @@ pub mod pallet {
 	impl<T:Config> Pallet<T> {
 
 		pub fn new_task(from_initiator: &T::AccountId, title: BoundedVec<u8, T::MaxTitleLen>, specification: BoundedVec<u8, T::MaxSpecificationLen>, budget: &BalanceOf<T>,
-			 deadline: u64, attachments: BoundedVec<u8, T::MaxAttachmentsLen>, keywords: BoundedVec<u8, T::MaxKeywordsLen>, feedback: BoundedVec<u8, T::MaxFeedbackLen>) -> Result<T::Hash, DispatchError> {
+			 deadline: u64, attachments: BoundedVec<u8, T::MaxAttachmentsLen>, keywords: BoundedVec<u8, T::MaxKeywordsLen>) -> Result<T::Hash, DispatchError> {
 
 			// Ensure user has a profile before creating a task
 			ensure!(pallet_profile::Pallet::<T>::has_profile(from_initiator).unwrap(), <Error<T>>::NoProfile);
@@ -468,7 +468,7 @@ pub mod pallet {
 				deadline,
 				attachments,
 				keywords,
-				feedback,
+				feedback: None,
 				created_at: <frame_system::Pallet<T>>::block_number(),
 				updated_at: Default::default(),
 				completed_at: Default::default(),
@@ -494,7 +494,7 @@ pub mod pallet {
 
 		// Task can be updated only after it has been created. Task that is already in progress can't be updated.
 		pub fn update_created_task(from_initiator: &T::AccountId, task_id: &T::Hash, new_title: BoundedVec<u8, T::MaxTitleLen>, new_specification: BoundedVec<u8, T::MaxSpecificationLen>, new_budget: &BalanceOf<T>, 
-			new_deadline: u64, attachments: BoundedVec<u8, T::MaxAttachmentsLen>, keywords: BoundedVec<u8, T::MaxKeywordsLen>, feedback: BoundedVec<u8, T::MaxFeedbackLen>) -> Result<(), DispatchError> {
+			new_deadline: u64, attachments: BoundedVec<u8, T::MaxAttachmentsLen>, keywords: BoundedVec<u8, T::MaxKeywordsLen>) -> Result<(), DispatchError> {
 
 			// Check if task exists
 			let mut task = Self::tasks(&task_id).ok_or(<Error<T>>::TaskNotExist)?;
@@ -519,7 +519,6 @@ pub mod pallet {
 			task.deadline = new_deadline;
 			task.attachments = attachments.clone();
 			task.keywords = keywords.clone();
-			task.feedback = feedback.clone();
 			task.updated_at = <frame_system::Pallet<T>>::block_number();
 
 			// Insert task into Hashmap
@@ -636,7 +635,7 @@ pub mod pallet {
 		}
 
 		// Task can be rejected by the creator, which places the task back into progress.
-		pub fn reject_completed_task(task_initiator: &T::AccountId, task_id: &T::Hash) -> Result<(), DispatchError> {
+		pub fn reject_completed_task(task_initiator: &T::AccountId, task_id: &T::Hash, feedback: BoundedVec<u8, T::MaxFeedbackLen>) -> Result<(), DispatchError> {
 
 			// Check if task exists
 			let mut task = Self::tasks(&task_id).ok_or(<Error<T>>::TaskNotExist)?;
@@ -659,6 +658,7 @@ pub mod pallet {
 			// Set current owner back to volunteer
 			task.current_owner = task.volunteer.clone();
 			task.status = TaskStatus::InProgress;
+			task.feedback = Some(feedback.clone());
 			let task_volunteer = task.volunteer.clone();
 
 			// Insert task
