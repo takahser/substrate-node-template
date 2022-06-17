@@ -224,16 +224,12 @@ fn task_can_be_updated_after_it_is_created(){
 
 		// assert the budget is correct
 		assert_eq!(task.budget, BUDGET);
-		let task_account = Task::account_id(&hash);
-		assert_eq!(Balances::balance(&task_account), BUDGET);
 
 		assert_ok!(Task::update_task(Origin::signed(10), hash, title2(), spec2(), BUDGET2, get_deadline(), attachments2(), keywords2()));
 
 		// Get task through the hash
 		let hash = Task::tasks_owned(10)[0];
 		let task = Task::tasks(hash).expect("should found the task");
-		let task_account = Task::account_id(&hash);
-		assert_eq!(Balances::balance(&task_account), BUDGET2);
 
 		// Ensure that task properties are assigned correctly
 		assert_eq!(task.current_owner, 10);
