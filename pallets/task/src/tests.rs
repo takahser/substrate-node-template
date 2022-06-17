@@ -248,6 +248,7 @@ fn check_balance_after_update_task(){
 
 		assert_ok!(Task::create_task(Origin::signed(10), title(), spec(), BUDGET, get_deadline(), attachments(), keywords()));
 
+		let hash = Task::tasks_owned(10)[0];
 		assert_ok!(Task::update_task(Origin::signed(10), hash, title2(), spec2(), BUDGET2, get_deadline(), attachments2(), keywords2()));
 
 		let hash = Task::tasks_owned(10)[0];
