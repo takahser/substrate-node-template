@@ -241,6 +241,70 @@ fn task_can_be_updated_after_it_is_created(){
 }
 
 #[test]
+fn check_balance_after_update_task(){
+	new_test_ext().execute_with( || {
+
+		// Create profle and task
+		assert_ok!(Profile::create_profile(Origin::signed(10), username(), interests(), HOURS));
+		assert_ok!(Task::create_task(Origin::signed(10), title(), spec(), BUDGET, get_deadline(), attachments(), keywords()));
+
+		// Get hash and update task with new Budget
+		let hash = Task::tasks_owned(10)[0];
+		assert_ok!(Task::update_task(Origin::signed(10), hash, title2(), spec2(), BUDGET2, get_deadline(), attachments2(), keywords2()));
+
+		// Ensure the new budget is transfered to escrow_account and assigned correctly
+		let hash = Task::tasks_owned(10)[0];
+		let task = Task::tasks(hash).expect("should found the task");
+		let task_account = Task::account_id(&hash);
+		assert_eq!(Balances::balance(&task_account), BUDGET2);
+		assert_eq!(task.budget, BUDGET2);
+
+		// Update task again with previous budget
+		assert_ok!(Task::update_task(Origin::signed(10), hash, title2(), spec2(), BUDGET, get_deadline(), attachments2(), keywords2()));
+		let hash = Task::tasks_owned(10)[0];
+		let task = Task::tasks(hash).expect("should found the task");
+		let task_account = Task::account_id(&hash);
+
+		// Ensure new budget is assigned correctly
+		assert_eq!(Balances::balance(&task_account), BUDGET);
+		assert_eq!(task.budget, BUDGET);
+	});
+}
+
+#[test]
+fn check_balance_after_complete_task(){
+	new_test_ext().execute_with( || {
+
+		// Create profiles
+		assert_ok!(Profile::create_profile(Origin::signed(10), username(), interests(), HOURS));
+		assert_ok!(Profile::create_profile(Origin::signed(2), username(), interests(), HOURS));
+
+		// Get balance of users
+		let creator_balance = Balances::balance(&10);
+		let volunteer_balance = Balances::balance(&1);
+
+		// Ensure task can be created
+		assert_ok!(Task::create_task(Origin::signed(10), title(), spec(), BUDGET, get_deadline(), attachments(), keywords()));
+
+		// Get hash of task
+		let hash = Task::tasks_owned(10)[0];
+
+		// Ensure task is started by new current_owner (user 2)
+		assert_ok!(Task::start_task(Origin::signed(2), hash));
+		assert_ok!(Task::complete_task(Origin::signed(2), hash));
+		assert_ok!(Task::accept_task(Origin::signed(10), hash));
+
+		// Ensure the escrow account is 0
+		let task_account = Task::account_id(&hash);
+		assert_eq!(Balances::balance(&task_account), 0);
+
+		// Ensure the balances are added/subtracted to respective balances
+		assert_eq!(Balances::balance(&2), volunteer_balance + BUDGET);
+		assert_eq!(Balances::balance(&10), creator_balance - BUDGET);
+	});
+}
+
+#[test]
 fn task_can_be_updated_only_by_one_who_created_it(){
 	new_test_ext().execute_with( || {
 
@@ -786,6 +850,39 @@ fn delete_task_after_deadline() {
 		run_to_block(302);
 		let task = Task::tasks(hash);
 		assert!(task.is_none());
+	});
+}
+
+#[test]
+fn balance_check_after_delete_task() {
+	new_test_ext().execute_with( || {
+		
+		// Create profile
+		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS));
+		let signer_balance = Balances::balance(&1);
+
+		// Create task
+		assert_ok!(Task::create_task(Origin::signed(1), title(), spec(), BUDGET, get_deadline(), attachments(), keywords()));
+		
+		// Assign balances to task creator and escrow after task creation
+		let signer_balance_after_task_creation = Balances::balance(&1);
+		let hash = Task::tasks_owned(1)[0];
+		let task_account = Task::account_id(&hash);
+		let task_balance = Balances::balance(&task_account);
+		
+		// Ensure balances are correct
+		assert_eq!(task_balance, BUDGET);
+		assert_eq!(signer_balance, signer_balance_after_task_creation + task_balance);
+
+
+		assert_ok!(Task::remove_task(Origin::signed(1), hash));
+
+		let signer_balance_after_task_deletion = Balances::balance(&1);
+		let task_balance = Balances::balance(&task_account);
+
+		// Ensure balances are correct after task removal
+		assert_eq!(signer_balance, signer_balance_after_task_deletion);
+		assert_eq!(task_balance, 0);
 	});
 }
 
