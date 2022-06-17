@@ -245,6 +245,28 @@ fn task_can_be_updated_after_it_is_created(){
 }
 
 #[test]
+fn check_balance_after_update_task(){
+	new_test_ext().execute_with( || {
+
+		assert_ok!(Profile::create_profile(Origin::signed(10), username(), interests(), HOURS));
+
+		assert_ok!(Task::create_task(Origin::signed(10), title(), spec(), BUDGET, get_deadline(), attachments(), keywords()));
+
+		assert_ok!(Task::update_task(Origin::signed(10), hash, title2(), spec2(), BUDGET2, get_deadline(), attachments2(), keywords2()));
+
+		let hash = Task::tasks_owned(10)[0];
+		let task_account = Task::account_id(&hash);
+		assert_eq!(Balances::balance(&task_account), BUDGET2);
+
+		assert_ok!(Task::update_task(Origin::signed(10), hash, title2(), spec2(), BUDGET, get_deadline(), attachments2(), keywords2()));
+		let hash = Task::tasks_owned(10)[0];
+		let task_account = Task::account_id(&hash);
+		assert_eq!(Balances::balance(&task_account), BUDGET);
+
+	});
+}
+
+#[test]
 fn task_can_be_updated_only_by_one_who_created_it(){
 	new_test_ext().execute_with( || {
 
@@ -427,17 +449,12 @@ fn task_can_be_removed_by_owner(){
 	new_test_ext().execute_with( || {
 
 		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS));
-		let signer_balance = Balances::balance(&1);
 
 		// Ensure new task can be created.
 		assert_ok!(Task::create_task(Origin::signed(1), title(), spec(), BUDGET, get_deadline(), attachments(), keywords()));
-		let signer_balance_after_task_creation = Balances::balance(&1);
 
 		// Ensure that task can't be started once its started
 		let hash = Task::tasks_owned(1)[0];
-		let task_balance = Balances::balance(&Task::account_id(&hash));
-		assert_eq!(task_balance, BUDGET);
-		assert_eq!(signer_balance, signer_balance_after_task_creation + task_balance);
 
 		// Ensure another user can't remove the task
 		assert_noop!(Task::remove_task(Origin::signed(2), hash), Error::<Test>::NoPermissionToRemove);
@@ -445,10 +462,6 @@ fn task_can_be_removed_by_owner(){
 		// Ensure the task can be removed
 		assert_ok!(Task::remove_task(Origin::signed(1), hash));
 		assert_eq!(Task::task_count(), 0);
-		let signer_balance_after_task_deletion = Balances::balance(&1);
-		let task_balance = Balances::balance(&Task::account_id(&hash));
-		assert_eq!(signer_balance, signer_balance_after_task_deletion);
-		assert_eq!(task_balance, 0);
 
 	});
 }
@@ -789,23 +802,36 @@ fn delete_task_after_deadline() {
 		run_to_block(1);
 		// Profile is necessary for task creation
 		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS));
-		let signer_balance = Balances::balance(&1);
 
 		// Ensure new task can be created.
 		assert_ok!(Task::create_task(Origin::signed(1), title(), spec(), BUDGET, get_deadline(), attachments(), keywords()));
-		let signer_balance_after_task_creation = Balances::balance(&1);
 		let hash = Task::tasks_owned(1)[0];
 		let task = Task::tasks(hash);
 		assert!(task.is_some());
-		let task_balance = Balances::balance(&Task::account_id(&hash));
-		assert_eq!(task_balance, BUDGET);
-		assert_eq!(signer_balance, signer_balance_after_task_creation + task_balance);
 		// deadline is 1 hour => 3600 sec => 300 blocks as 12 secs per block
 		run_to_block(302);
 		let task = Task::tasks(hash);
 		assert!(task.is_none());
+	});
+}
+
+#[test]
+fn balance_check_after_delete_task() {
+	new_test_ext().execute_with( || {
+		run_to_block(1);
+		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS));
+		let signer_balance = Balances::balance(&1);
+
+		assert_ok!(Task::create_task(Origin::signed(1), title(), spec(), BUDGET, get_deadline(), attachments(), keywords()));
+		let signer_balance_after_task_creation = Balances::balance(&1);
+		let hash = Task::tasks_owned(1)[0];
+		let task_account = Task::account_id(&hash);
+		let task_balance = Balances::balance(&task_account);
+		assert_eq!(task_balance, BUDGET);
+		assert_eq!(signer_balance, signer_balance_after_task_creation + task_balance);
+		assert_ok!(Task::remove_task(Origin::signed(1), hash));
 		let signer_balance_after_task_deletion = Balances::balance(&1);
-		let task_balance = Balances::balance(&Task::account_id(&hash));
+		let task_balance = Balances::balance(&task_account);
 		assert_eq!(signer_balance, signer_balance_after_task_deletion);
 		assert_eq!(task_balance, 0);
 	});
