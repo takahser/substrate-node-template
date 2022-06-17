@@ -284,7 +284,7 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 		/// Function call that creates tasks.  [ origin, specification, budget, deadline]
 		#[pallet::weight(<T as Config>::WeightInfo::create_task(0,0))]
-		pub fn create_task(origin: OriginFor<T>, title: BoundedVec<u8, T::MaxTitleLen>, specification: BoundedVec<u8, T::MaxSpecificationLen>, budget: BalanceOf<T>, 
+		pub fn create_task(origin: OriginFor<T>, title: BoundedVec<u8, T::MaxTitleLen>, specification: BoundedVec<u8, T::MaxSpecificationLen>, budget: BalanceOf<T>,
 			deadline: u64, attachments: BoundedVec<u8, T::MaxAttachmentsLen>, keywords: BoundedVec<u8, T::MaxKeywordsLen>) -> DispatchResultWithPostInfo {
 
 			// Check that the extrinsic was signed and get the signer.
@@ -305,21 +305,31 @@ pub mod pallet {
 		}
 
 		/// Function call that updates a created task.  [ origin, specification, budget, deadline]
-		/// Note: budget specified in this call is added to budget provided in create_task() call.
 		#[pallet::weight(<T as Config>::WeightInfo::update_task(0,0))]
-		pub fn update_task(origin: OriginFor<T>, task_id: T::Hash, title: BoundedVec<u8, T::MaxTitleLen>, specification: BoundedVec<u8, T::MaxSpecificationLen>, 
+		pub fn update_task(origin: OriginFor<T>, task_id: T::Hash, title: BoundedVec<u8, T::MaxTitleLen>, specification: BoundedVec<u8, T::MaxSpecificationLen>,
 			budget: BalanceOf<T>, deadline: u64, attachments: BoundedVec<u8, T::MaxAttachmentsLen>, keywords: BoundedVec<u8, T::MaxKeywordsLen>) -> DispatchResultWithPostInfo {
 
 			// Check that the extrinsic was signed and get the signer.
 			let signer = ensure_signed(origin)?;
 
+			let task = Self::tasks(&task_id).ok_or(<Error<T>>::TaskNotExist)?;
+
 			// Update storage.
 			let _task_id = Self::update_created_task(&signer, &task_id, title, specification, &budget, deadline, attachments, keywords)?;
 
-			// Update balance of escrow account
-			let sub_account = Self::account_id(&task_id);
-			<T as self::Config>::Currency::transfer(&signer, &sub_account, budget,
-				ExistenceRequirement::KeepAlive)?;
+			if task.budget != budget {
+				// Update balance of escrow account
+				let sub_account = Self::account_id(&task_id);
+				if task.budget > budget {
+					let difference = task.budget - budget;
+					<T as self::Config>::Currency::transfer(&sub_account, &signer, difference,
+						ExistenceRequirement::KeepAlive)?;
+				} else {
+					let difference = budget - task.budget;
+					<T as self::Config>::Currency::transfer(&signer, &sub_account, difference,
+						ExistenceRequirement::KeepAlive)?;
+				}
+			}
 
 			// Emit a Task Updated Event.
 			Self::deposit_event(Event::TaskUpdated(signer, task_id));
@@ -431,15 +441,6 @@ pub mod pallet {
 				if let Some(task) = task {
 					let deadline_duration = Duration::from_millis(task.deadline.saturated_into::<u64>());
 					if deadline_duration < current_timestamp {
-						// return balance back to initiator
-						let sub_account = Self::account_id(&th);
-						if let Err(e) = <T as self::Config>::Currency::transfer(&sub_account, &task.initiator, task.budget,
-							ExistenceRequirement::AllowDeath) {
-							log::error!("balance transfer from task sub_account {:?} to initiator
-							{:?}
-								failed with error {:?}", sub_account, task.initiator, e);
-							continue;
-						}
 						if let Ok(()) = Self::delete_task(&task.initiator, &th) {
 							weight += 10_000;
 						}
@@ -498,7 +499,7 @@ pub mod pallet {
 		}
 
 		// Task can be updated only after it has been created. Task that is already in progress can't be updated.
-		pub fn update_created_task(from_initiator: &T::AccountId, task_id: &T::Hash, new_title: BoundedVec<u8, T::MaxTitleLen>, new_specification: BoundedVec<u8, T::MaxSpecificationLen>, new_budget: &BalanceOf<T>, 
+		pub fn update_created_task(from_initiator: &T::AccountId, task_id: &T::Hash, new_title: BoundedVec<u8, T::MaxTitleLen>, new_specification: BoundedVec<u8, T::MaxSpecificationLen>, new_budget: &BalanceOf<T>,
 			new_deadline: u64, attachments: BoundedVec<u8, T::MaxAttachmentsLen>, keywords: BoundedVec<u8, T::MaxKeywordsLen>) -> Result<(), DispatchError> {
 
 			// Check if task exists
@@ -691,6 +692,10 @@ pub mod pallet {
 
 			// remove task from storage
 			<Tasks<T>>::remove(task_id);
+			// Transfer balance amount from escrow account to task creator
+			let sub_account = Self::account_id(&task_id);
+			<T as self::Config>::Currency::transfer(&sub_account, &task_initiator, task.budget,
+				ExistenceRequirement::AllowDeath)?;
 
 			// Reduce task count
 			let new_count = Self::task_count().saturating_sub(1);
