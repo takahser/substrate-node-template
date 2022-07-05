@@ -17,6 +17,8 @@
 
 
 //! # Profile Pallet
+//! 
+//! ## Version: 0.7.0
 //!
 //! - [`Config`]
 //! - [`Pallet`]
@@ -32,12 +34,31 @@
 //! ### Public Functions
 //!
 //! - `create_profile` - Function used to create a new user profile.
+//! 	Requirements: 
+//! 	1. Each account can create a single Profile.
+//! 	2. Profiles are mandatory for creating Tasks.
+//! 	Inputs: 
+//! 		- username: BoundedVec,
+//! 		- interests: BoundedVec,
+//! 		- available_hours_per_week: u8,
+//! 		- additional_information
 //!
 //! - `update_profile` - Function used to update an already existing user profile.
+//! 	Inputs: 
+//! 		- username: BoundedVec,
+//! 		- interests: BoundedVec,
+//! 		- available_hours_per_week: u8,
+//! 		- additional_information
 //!
 //! - `remove_profile` - Function used to delete an existing user profile.
-//!
-//! - `update_additional_information` - Function used to update additional information.
+//! 	Inputs: 
+//! 		No Inputs
+//! 
+//! Storage Items:
+//! 	Profiles: Stores profile Information
+//! 	ProfileCount: Counts the total number of Profiles
+//! 	CompletedTasks: Stores the completed Tasks history for a Profile
+//! 	
 //!
 //! ## Related Modules
 //!
@@ -135,8 +156,7 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn completed_tasks)]
 	/// Stores list of completed tasks for a profile.
-	pub(super) type CompletedTasks<T: Config> = StorageMap<_, Twox64Concat, T::AccountId,
-	BoundedVec<T::Hash, T::MaxCompletedTasksLen> >;
+	pub(super) type CompletedTasks<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, BoundedVec<T::Hash, T::MaxCompletedTasksLen> >;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -178,14 +198,15 @@ pub mod pallet {
 
 		/// Dispatchable call that enables every new actor to create personal profile in storage.
 		#[pallet::weight(<T as Config>::WeightInfo::create_profile(0,0))]
-		pub fn create_profile(origin: OriginFor<T>, username: BoundedVec<u8, T::MaxUsernameLen>, interests: BoundedVec<u8, T::MaxInterestsLen>, available_hours_per_week: u8) -> DispatchResult {
+		pub fn create_profile(origin: OriginFor<T>, username: BoundedVec<u8, T::MaxUsernameLen>, interests: BoundedVec<u8, T::MaxInterestsLen>, available_hours_per_week: u8, 
+			additional_information : Option<BoundedVec<u8, T::MaxAdditionalInformationLen>>) -> DispatchResult {
 
 			// Check that the extrinsic was signed and get the signer.
 			let account = ensure_signed(origin)?;
 
 			// Call helper function to generate Profile Struct
 			let _profile_id = Self::generate_profile(&account, username, interests,
-				available_hours_per_week)?;
+				available_hours_per_week, additional_information)?;
 
 			// Emit an event.
 			Self::deposit_event(Event::ProfileCreated{ who:account });
@@ -195,8 +216,8 @@ pub mod pallet {
 
 		/// Dispatchable call that ensures user can update existing personal profile in storage.
 		#[pallet::weight(<T as Config>::WeightInfo::update_profile(0))]
-		pub fn update_profile(origin: OriginFor<T>, username: BoundedVec<u8, T::MaxUsernameLen>, interests: BoundedVec<u8, T::MaxInterestsLen>, available_hours_per_week: u8, additional_information :
-			Option<BoundedVec<u8, T::MaxAdditionalInformationLen>>) -> DispatchResult {
+		pub fn update_profile(origin: OriginFor<T>, username: BoundedVec<u8, T::MaxUsernameLen>, interests: BoundedVec<u8, T::MaxInterestsLen>, available_hours_per_week: u8, 
+			additional_information : Option<BoundedVec<u8, T::MaxAdditionalInformationLen>>) -> DispatchResult {
 
 			// Check that the extrinsic was signed and get the signer.
 			let account = ensure_signed(origin)?;
@@ -231,7 +252,7 @@ pub mod pallet {
 	// ** Helper internal functions ** //
 	impl<T:Config> Pallet<T> {
 		// Generates initial Profile.
-		pub fn generate_profile(owner: &T::AccountId, name: BoundedVec<u8, T::MaxUsernameLen>, interests: BoundedVec<u8, T::MaxInterestsLen>, available_hours_per_week: u8) -> Result<T::Hash, DispatchError> {
+		pub fn generate_profile(owner: &T::AccountId, name: BoundedVec<u8, T::MaxUsernameLen>, interests: BoundedVec<u8, T::MaxInterestsLen>, available_hours_per_week: u8, additional_information: Option<BoundedVec<u8, T::MaxAdditionalInformationLen>>) -> Result<T::Hash, DispatchError> {
 
 			// Check if profile already exists for owner
 			ensure!(!Profiles::<T>::contains_key(&owner), Error::<T>::ProfileAlreadyCreated);
@@ -247,7 +268,7 @@ pub mod pallet {
 				balance: Some(balance),
 				reputation: 0,
 				available_hours_per_week,
-				additional_information: None
+				additional_information,
 			};
 
 			// Get hash of profile
@@ -336,6 +357,7 @@ pub mod pallet {
 			<CompletedTasks<T>>::mutate(owner, |completed_tasks| -> Result<(), DispatchError> {
 				if let Some(ct) = completed_tasks {
 				ct.try_push(task).map_err(|_|
+					// TODO: Instead of throwing an error, we have to clear up older history.
 					Error::<T>::CompletedTasksStorageFull.into())
 				} else {
 				Ok(())

@@ -57,6 +57,10 @@ fn feedback() -> BoundedVec<u8, MaxFeedbackLen> {
 	vec![1u8, 4].try_into().unwrap()
 }
 
+fn additional_info() -> BoundedVec<u8, MaxAdditionalInformationLen> {
+	vec![1u8, 4].try_into().unwrap()
+}
+
 
 fn get_deadline() -> u64 {
 		// deadline is current time + 1 hour
@@ -90,7 +94,7 @@ fn create_new_task(){
 	new_test_ext().execute_with( || {
 
 		// Profile is necessary for task creation
-		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS));
+		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS, Some(additional_info())));
 
 		// Ensure new task can be created.
 		assert_ok!(Task::create_task(Origin::signed(1), title(), spec(), BUDGET, get_deadline(), attachments(), keywords()));
@@ -102,7 +106,7 @@ fn fund_transfer_on_create_task(){
 	new_test_ext().execute_with( || {
 
 		// Profile is necessary for task creation
-		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS));
+		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS, Some(additional_info())));
 
 		assert_eq!(Balances::balance(&1), 1000);
 		// Ensure new task can be created.
@@ -118,7 +122,7 @@ fn increase_task_count_when_creating_task(){
 	new_test_ext().execute_with( || {
 
 		// Profile is necessary for task creation
-		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS));
+		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS, Some(additional_info())));
 
 		// Ensure new task can be created.
 		assert_ok!(Task::create_task(Origin::signed(1), title(), spec() , BUDGET, get_deadline(), attachments(), keywords()));
@@ -133,7 +137,7 @@ fn increase_task_count_when_creating_two_tasks(){
 	new_test_ext().execute_with( || {
 
 		// Profile is necessary for task creation
-		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS));
+		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS, Some(additional_info())));
 
 		// Ensure new task can be created.
 		assert_ok!(Task::create_task(Origin::signed(1), title(), spec(), BUDGET, get_deadline(), attachments(), keywords()));
@@ -151,7 +155,7 @@ fn cant_own_more_tax_than_max_tasks(){
 		// TODO: use MaxTasksOwned instead of hardcoded values;
 
 		// Profile is necessary for task creation
-		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS));
+		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS, Some(additional_info())));
 
 		// Create 77 tasks  ExceedMaxTasksOwned
 		for _n in 0..77 {
@@ -174,7 +178,7 @@ fn assign_task_to_current_owner(){
 	new_test_ext().execute_with( || {
 
 		// Profile is necessary for task creation
-		assert_ok!(Profile::create_profile(Origin::signed(10), username(), interests(), HOURS));
+		assert_ok!(Profile::create_profile(Origin::signed(10), username(), interests(), HOURS, Some(additional_info())));
 
 		assert_ok!(Task::create_task(Origin::signed(10), title(), spec(), BUDGET, get_deadline(), attachments(), keywords()));
 
@@ -191,7 +195,7 @@ fn verify_inputs_outputs_to_tasks(){
 	new_test_ext().execute_with( || {
 
 		// Profile is necessary for task creation
-		assert_ok!(Profile::create_profile(Origin::signed(10), username(), interests(), HOURS));
+		assert_ok!(Profile::create_profile(Origin::signed(10), username(), interests(), HOURS, Some(additional_info())));
 
 		assert_ok!(Task::create_task(Origin::signed(10), title(), spec(), BUDGET, get_deadline(), attachments(), keywords()));
 
@@ -214,7 +218,7 @@ fn task_can_be_updated_after_it_is_created(){
 	new_test_ext().execute_with( || {
 
 		// Profile is necessary for task creation
-		assert_ok!(Profile::create_profile(Origin::signed(10), username(), interests(), HOURS));
+		assert_ok!(Profile::create_profile(Origin::signed(10), username(), interests(), HOURS, Some(additional_info())));
 
 		assert_ok!(Task::create_task(Origin::signed(10), title(), spec(), BUDGET, get_deadline(), attachments(), keywords()));
 
@@ -245,7 +249,7 @@ fn check_balance_after_update_task(){
 	new_test_ext().execute_with( || {
 
 		// Create profle and task
-		assert_ok!(Profile::create_profile(Origin::signed(10), username(), interests(), HOURS));
+		assert_ok!(Profile::create_profile(Origin::signed(10), username(), interests(), HOURS, Some(additional_info())));
 		assert_ok!(Task::create_task(Origin::signed(10), title(), spec(), BUDGET, get_deadline(), attachments(), keywords()));
 
 		// Get hash and update task with new Budget
@@ -276,8 +280,8 @@ fn check_balance_after_complete_task(){
 	new_test_ext().execute_with( || {
 
 		// Create profiles
-		assert_ok!(Profile::create_profile(Origin::signed(10), username(), interests(), HOURS));
-		assert_ok!(Profile::create_profile(Origin::signed(2), username(), interests(), HOURS));
+		assert_ok!(Profile::create_profile(Origin::signed(10), username(), interests(), HOURS, Some(additional_info())));
+		assert_ok!(Profile::create_profile(Origin::signed(2), username(), interests(), HOURS, Some(additional_info())));
 
 		// Get balance of users
 		let creator_balance = Balances::balance(&10);
@@ -309,7 +313,7 @@ fn task_can_be_updated_only_by_one_who_created_it(){
 	new_test_ext().execute_with( || {
 
 		// Profile is necessary for task creation
-		assert_ok!(Profile::create_profile(Origin::signed(10), username(), interests(), HOURS));
+		assert_ok!(Profile::create_profile(Origin::signed(10), username(), interests(), HOURS, Some(additional_info())));
 
 		assert_ok!(Task::create_task(Origin::signed(10), title(), spec(), BUDGET, get_deadline(), attachments(), keywords()));
 
@@ -327,7 +331,7 @@ fn task_can_be_updated_only_after_it_has_been_created(){
 	new_test_ext().execute_with( || {
 
 		// Profile is necessary for task creation
-		assert_ok!(Profile::create_profile(Origin::signed(10), username(), interests(), HOURS));
+		assert_ok!(Profile::create_profile(Origin::signed(10), username(), interests(), HOURS, Some(additional_info())));
 
 		// Ensure task can be created
 		assert_ok!(Task::create_task(Origin::signed(10), title(), spec(), BUDGET, get_deadline(), attachments(), keywords()));
@@ -349,8 +353,8 @@ fn start_tasks_assigns_new_current_owner(){
 	new_test_ext().execute_with( || {
 
 		// Profile is necessary for task creation
-		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS));
-		assert_ok!(Profile::create_profile(Origin::signed(2), username(), interests(), HOURS));
+		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS, Some(additional_info())));
+		assert_ok!(Profile::create_profile(Origin::signed(2), username(), interests(), HOURS, Some(additional_info())));
 
 		// Ensure new task can be created.
 		assert_ok!(Task::create_task(Origin::signed(1), title(), spec(), BUDGET, get_deadline(), attachments(), keywords()));
@@ -376,7 +380,7 @@ fn start_tasks_assigns_task_to_volunteer(){
 	new_test_ext().execute_with( || {
 
 		// Profile is necessary for task creation
-		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS));
+		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS, Some(additional_info())));
 
 		// Ensure new task can be created.
 		assert_ok!(Task::create_task(Origin::signed(1), title(), spec(), BUDGET, get_deadline(), attachments(), keywords()));
@@ -402,7 +406,7 @@ fn completing_tasks_assigns_new_current_owner(){
 	new_test_ext().execute_with( || {
 
 		// Profile is necessary for task creation
-		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS));
+		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS, Some(additional_info())));
 
 		// Ensure new task can be created.
 		assert_ok!(Task::create_task(Origin::signed(1), title(), spec(), BUDGET, get_deadline(), attachments(), keywords()));
@@ -434,7 +438,7 @@ fn completing_tasks_assigns_new_current_owner(){
 fn the_volunteer_is_different_from_task_creator(){
 	new_test_ext().execute_with( || {
 
-		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS));
+		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS, Some(additional_info())));
 
 		// Ensure new task can be created.
 		assert_ok!(Task::create_task(Origin::signed(1), title(), spec(), BUDGET, get_deadline(), attachments(), keywords()));
@@ -450,7 +454,7 @@ fn the_volunteer_is_different_from_task_creator(){
 fn task_can_only_be_started_once(){
 	new_test_ext().execute_with( || {
 
-		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS));
+		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS, Some(additional_info())));
 
 		// Ensure new task can be created.
 		assert_ok!(Task::create_task(Origin::signed(1), title(), spec(), BUDGET, get_deadline(), attachments(), keywords()));
@@ -467,7 +471,7 @@ fn task_can_only_be_started_once(){
 fn task_can_only_be_finished_by_the_user_who_started_it(){
 	new_test_ext().execute_with( || {
 
-		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS));
+		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS, Some(additional_info())));
 
 		// Ensure new task can be created.
 		assert_ok!(Task::create_task(Origin::signed(1), title(), spec(), BUDGET, get_deadline(), attachments(), keywords()));
@@ -486,7 +490,7 @@ fn task_can_only_be_finished_by_the_user_who_started_it(){
 fn task_can_be_removed_by_owner(){
 	new_test_ext().execute_with( || {
 
-		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS));
+		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS, Some(additional_info())));
 
 		// Ensure new task can be created.
 		assert_ok!(Task::create_task(Origin::signed(1), title(), spec(), BUDGET, get_deadline(), attachments(), keywords()));
@@ -508,7 +512,7 @@ fn task_can_be_removed_by_owner(){
 fn task_can_be_removed_only_when_status_is_created(){
 	new_test_ext().execute_with( || {
 
-		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS));
+		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS, Some(additional_info())));
 
 		// Ensure new task can be created.
 		assert_ok!(Task::create_task(Origin::signed(1), title(), spec(), 7, get_deadline(), attachments(), keywords()));
@@ -529,8 +533,8 @@ fn only_creator_accepts_task(){
 	new_test_ext().execute_with( || {
 
 		// Profile is necessary for task creation
-		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS));
-		assert_ok!(Profile::create_profile(Origin::signed(2), username(), interests(), HOURS));
+		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS, Some(additional_info())));
+		assert_ok!(Profile::create_profile(Origin::signed(2), username(), interests(), HOURS, Some(additional_info())));
 
 		// Ensure new task can be created.
 		assert_ok!(Task::create_task(Origin::signed(1), title(), spec(), BUDGET, get_deadline(), attachments(), keywords()));
@@ -566,8 +570,8 @@ fn accepted_task_is_added_to_completed_task_for_volunteer(){
 	new_test_ext().execute_with( || {
 
 		// Profile is necessary for task creation
-		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS));
-		assert_ok!(Profile::create_profile(Origin::signed(2), username(), interests(), HOURS));
+		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS, Some(additional_info())));
+		assert_ok!(Profile::create_profile(Origin::signed(2), username(), interests(), HOURS, Some(additional_info())));
 
 		assert_ok!(Task::create_task(Origin::signed(1), title(), spec(), BUDGET, get_deadline(), attachments(), keywords()));
 
@@ -589,8 +593,8 @@ fn volunteer_gets_paid_on_task_completion(){
 	new_test_ext().execute_with( || {
 
 		// Profile is necessary for task creation
-		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS));
-		assert_ok!(Profile::create_profile(Origin::signed(2), username(), interests(), HOURS));
+		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS, Some(additional_info())));
+		assert_ok!(Profile::create_profile(Origin::signed(2), username(), interests(), HOURS, Some(additional_info())));
 
 		// Ensure new task can be created.
 		assert_ok!(Task::create_task(Origin::signed(1), title(), spec(), BUDGET, get_deadline(), attachments(), keywords()));
@@ -617,8 +621,8 @@ fn only_started_task_can_be_completed(){
 	new_test_ext().execute_with( || {
 
 		// Profile is necessary for task creation
-		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS));
-		assert_ok!(Profile::create_profile(Origin::signed(2), username(), interests(), HOURS));
+		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS, Some(additional_info())));
+		assert_ok!(Profile::create_profile(Origin::signed(2), username(), interests(), HOURS, Some(additional_info())));
 
 		// Ensure new task can be created.
 		assert_ok!(Task::create_task(Origin::signed(1), title(), spec(), BUDGET, get_deadline(), attachments(), keywords()));
@@ -644,8 +648,8 @@ fn when_task_is_accepted_ownership_is_cleared(){
 	new_test_ext().execute_with( || {
 
 		// Profile is necessary for task creation
-		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS));
-		assert_ok!(Profile::create_profile(Origin::signed(2), username(), interests(), HOURS));
+		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS, Some(additional_info())));
+		assert_ok!(Profile::create_profile(Origin::signed(2), username(), interests(), HOURS, Some(additional_info())));
 
 		// Ensure new task can be created.
 		assert_ok!(Task::create_task(Origin::signed(1), title(), spec(), BUDGET, get_deadline(), attachments(), keywords()));
@@ -685,7 +689,7 @@ fn decrease_task_count_when_accepting_task(){
 	new_test_ext().execute_with( || {
 
 		// Profile is necessary for task creation
-		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS));
+		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS, Some(additional_info())));
 
 		// Ensure new task can be created.
 		assert_ok!(Task::create_task(Origin::signed(1), title(), spec(), BUDGET, get_deadline(), attachments(), keywords()));
@@ -705,7 +709,7 @@ fn task_can_be_rejected_by_creator(){
 	new_test_ext().execute_with( || {
 
 		// Profile is necessary for task creation
-		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS));
+		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS, Some(additional_info())));
 
 		// Ensure new task can be created.
 		assert_ok!(Task::create_task(Origin::signed(1), title(), spec(), BUDGET, get_deadline(), attachments(), keywords()));
@@ -742,7 +746,7 @@ fn feedback_is_given_when_task_is_rejected(){
 	new_test_ext().execute_with( || {
 
 		// Profile is necessary for task creation
-		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS));
+		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS, Some(additional_info())));
 
 		// Ensure new task can be created.
 		assert_ok!(Task::create_task(Origin::signed(1), title(), spec(), BUDGET, get_deadline(), attachments(), keywords()));
@@ -780,8 +784,8 @@ fn increase_profile_reputation_when_task_completed(){
 	new_test_ext().execute_with( || {
 
 		// Profile is necessary for task creation
-		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS));
-		assert_ok!(Profile::create_profile(Origin::signed(2), username(), interests(), HOURS));
+		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS, Some(additional_info())));
+		assert_ok!(Profile::create_profile(Origin::signed(2), username(), interests(), HOURS, Some(additional_info())));
 
 		// Ensure new task can be created.
 		assert_ok!(Task::create_task(Origin::signed(1), title(), spec(), BUDGET, get_deadline(), attachments(), keywords()));
@@ -815,7 +819,7 @@ fn only_add_reputation_when_task_has_been_accepted(){
 	new_test_ext().execute_with( || {
 
 		// Profile is necessary for task creation
-		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS));
+		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS, Some(additional_info())));
 
 		// Ensure new task can be created.
 		assert_ok!(Task::create_task(Origin::signed(1), title(), spec(), BUDGET, get_deadline(), attachments(), keywords()));
@@ -839,7 +843,7 @@ fn delete_task_after_deadline() {
 	new_test_ext().execute_with( || {
 		run_to_block(1);
 		// Profile is necessary for task creation
-		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS));
+		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS, Some(additional_info())));
 
 		// Ensure new task can be created.
 		assert_ok!(Task::create_task(Origin::signed(1), title(), spec(), BUDGET, get_deadline(), attachments(), keywords()));
@@ -858,7 +862,7 @@ fn balance_check_after_delete_task() {
 	new_test_ext().execute_with( || {
 		
 		// Create profile
-		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS));
+		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS, Some(additional_info())));
 		let signer_balance = Balances::balance(&1);
 
 		// Create task
@@ -891,7 +895,7 @@ fn block_time_is_added_when_task_is_updated() {
 	new_test_ext().execute_with( || {
 		System::set_block_number(1);
 
-		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS));
+		assert_ok!(Profile::create_profile(Origin::signed(1), username(), interests(), HOURS, Some(additional_info())));
 
 		// Ensure new task can be created.
 		assert_ok!(Task::create_task(Origin::signed(1), title(), spec(), BUDGET, get_deadline(), attachments(), keywords()));
