@@ -3743,7 +3743,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-dao"
-version = "0.0.25"
+version = "0.7.0"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -3764,7 +3764,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-did"
-version = "0.0.25"
+version = "0.7.0"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -3805,7 +3805,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-profile"
-version = "0.0.69"
+version = "0.7.0"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -3871,7 +3871,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-task"
-version = "0.0.42"
+version = "0.7.0"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
