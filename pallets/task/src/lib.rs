@@ -17,6 +17,8 @@
 
 
 //! # Task Pallet
+//! 
+//! ## Version: 0.7.0
 //!
 //! - [`Config`]
 //! - [`Pallet`]
@@ -28,20 +30,14 @@
 //! There are two types of Users who can interact with tasks. We call them
 //! Initiators and Volunteers.
 //!
-//! Initiators are people who have the permission to Create and Remove Tasks.
+//! Initiators are people who have the permission to Create and Accept Tasks.
 //! Volunteers are people who have the permission to Start and Complete Tasks.
 //!
 //! Anybody can become an Initiator or Volunteer. In other words,
 //! one doesn't need permission to become an Initiator or Volunteer.
-//!
-//! When Tasks are created, there is some associated metadata that shall be defined.
-//! This includes the following:
-//! - Task Specification (Defining the Task specification)
-//! - Task Budget (The cost of completion for the Task)
-//! - Task Deadline (The specified time until which the task should be completed)
-//!
-//! Furthermore, budget funds are locked in escrow when task is created.
-//! Funds are removed from escrow when task is removed.
+//! 
+//! Budget funds are locked in escrow when task is created.
+//! Funds are removed from escrow when task is deleted.
 //!
 //! Tasks with expired deadline are automatically removed from storage.
 //!
@@ -90,6 +86,12 @@
 //! 	Inputs:
 //! 	- task_id: T::Hash,
 //! 	- feedback : BoundedVec
+//! 
+//! Storage Items:
+//! 	Tasks: Stores Task related information
+//! 	TaskCount: Counts the total number of Tasks in the ecosystem
+//! 	TasksOwned: Keeps track of how many tasks are owned per account
+//! 
 //!
 //! ## Related Modules
 //!
@@ -112,7 +114,7 @@ pub mod weights;
 
 #[frame_support::pallet]
 pub mod pallet {
-	use crate::TaskStatus::Created; //TODO: Better import
+	use crate::TaskStatus::Created; 
 	use frame_support::{dispatch::DispatchResult, pallet_prelude::*, traits::UnixTime, PalletId};
 	use frame_system::pallet_prelude::*;
 	use frame_support::{
@@ -404,6 +406,7 @@ pub mod pallet {
 
 			// Accept task and update storage.
 			Self::accept_completed_task(&signer, &task_id)?;
+
 			// Add task to completed tasks list of volunteer's profile.
 			pallet_profile::Pallet::<T>::add_task_to_completed_tasks(&task.volunteer, task_id)?;
 

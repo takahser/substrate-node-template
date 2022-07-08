@@ -33,6 +33,7 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
 	frame_system::Pallet::<T>::assert_last_event(generic_event.into());
 }
 
+
 // This creates an `Profile` object.
 fn create_profile_info<T: Config>(_num_fields: u32) -> Profile<T> {
 
@@ -70,10 +71,11 @@ benchmarks! {
 		let profile = create_profile_info::<T>(1);
 		let interests = vec![0u8, s as u8];
 		let username = vec![0u8, s as u8];
+		let additional_information = vec![0_u8; 5000];
 		let available_hours_per_week = 40_u8;
 
 	}: create_profile(RawOrigin::Signed(caller), username.try_into().unwrap(),
-	interests.try_into().unwrap(), available_hours_per_week)
+	interests.try_into().unwrap(), available_hours_per_week, Some(additional_information.try_into().unwrap()))
 
 	verify {
 		/* verifying final state */
@@ -94,7 +96,8 @@ benchmarks! {
 		let additional_information = vec![0_u8; 5000];
 
 		// before we update profile, profile must be created
-		let _ = PalletProfile::<T>::create_profile(RawOrigin::Signed(create_account_caller).into(), username.clone().try_into().unwrap(), interests.clone().try_into().unwrap(), available_hours_per_week);
+		let _ = PalletProfile::<T>::create_profile(RawOrigin::Signed(create_account_caller).into(), username.clone().try_into().unwrap(), interests.clone().try_into().unwrap(), 
+			available_hours_per_week, Some(additional_information.clone().try_into().unwrap()));
 
 	}: update_profile(RawOrigin::Signed(update_account_caller), username.try_into().unwrap(), interests.try_into().unwrap(), available_hours_per_week, Some(additional_information.try_into().unwrap()))
 
@@ -114,9 +117,11 @@ benchmarks! {
 		let interests = vec![0u8, s as u8];
 		let username = vec![0u8, s as u8];
 		let available_hours_per_week = 40_u8;
+		let additional_information = vec![0_u8; 5000];
 
 		// before we delete profile, profile must be created
-		let _ = PalletProfile::<T>::create_profile(RawOrigin::Signed(create_account_caller).into(), username.try_into().unwrap(), interests.try_into().unwrap(), available_hours_per_week);
+		let _ = PalletProfile::<T>::create_profile(RawOrigin::Signed(create_account_caller).into(), username.try_into().unwrap(), interests.try_into().unwrap(), 
+			available_hours_per_week, Some(additional_information.try_into().unwrap()));
 
 	}: remove_profile(RawOrigin::Signed(delete_account_caller))
 

@@ -40,10 +40,11 @@ fn create_profile<T: Config>(){
 
 	let username = Vec::new();
 	let interests = Vec::new();
+	let information = Vec::new();
 	let available_hours_per_week = 40_u8;
 
 	let caller: T::AccountId = whitelisted_caller();
-	let _profile = PalletProfile::<T>::create_profile(RawOrigin::Signed(caller).into(), username.try_into().unwrap(), interests.try_into().unwrap(), available_hours_per_week);
+	let _profile = PalletProfile::<T>::create_profile(RawOrigin::Signed(caller).into(), username.try_into().unwrap(), interests.try_into().unwrap(), available_hours_per_week, Some(information.try_into().unwrap()));
 
 }
 

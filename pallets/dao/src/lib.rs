@@ -17,6 +17,8 @@
 
 
 //! # DAO Pallet
+//! 
+//! ## Version 0.7.0
 //!
 //! - [`Config`]
 //! - [`Pallet`]
@@ -43,26 +45,75 @@
 //! ### Public Functions
 //!
 //! - `create_vision` - Function used to create vision of the future.
+//! 	Inputs:
+//! 		- vision_document: Vec<u8>
 //!
 //! - `remove_vision` - Function used to remove existing vision.
+//! 	Inputs:
+//! 		- vision_document: Vec<u8>
 //!
 //! - `sign_vision` - Function used to sign user to a vision. Signing a vision
 //! indicates interest that the user are interested in creating said vision.
+//! 	Inputs: 
+//! 		- vision_document: Vec<u8>
 //!
 //! - `unsign_vision` - Function used to unsign user from a vision. Unsigning a vision
 //! indicates that a user is no longer interested in creating said vision.
+//! 	Inputs: 
+//! 		- vision_document: Vec<u8>
 //!
 //! - `create_organization` - Function used to create a DAO organization.
+//! 	Inputs:
+//! 		- name: Vec<u8>
+//! 		- description: Vec<u8>,
+//! 		- vision: Vec<u8>
+//! 
+//! - `transfer_ownership` - Function used to transfer ownership of a DAO organization.
+//! 	Inputs:
+//! 		- org_id: Hash
+//! 		- new_owner: AccountID,
+//! 
+//! - `update_organization` - Function used to update an existing organization.
+//! 	Inputs:
+//! 		- org_id: Hash
+//! 		- name: Vec<u8>
+//! 		- description: Vec<u8>,
+//! 		- vision: Vec<u8>
 //!
 //! - `add_members` - Function used for a visionary to add members to his organization.
+//! 	Inputs:
+//! 		- org_id: Hash
+//! 		- account: AccountID
+//! 
+//! - `add_tasks` - Function used for a visionary to add tasks to his organization.
+//! 	Inputs:
+//! 		- org_id: Hash
+//! 		- task: Hash
 //!
 //! - `remove_members` - Function used for a visionary to remove members from his organization.
+//! 	Inputs:
+//! 		- org_id: Hash
+//! 		- account: AccountID
+//! 
+//! - `remove_tasks` - Function used for a visionary to remove tasks from his organization.
+//! 	Inputs: 
+//! 		- org_id: Hash
+//! 		- task: Hash
 //!
 //! - `dissolve_organization` - Function used for a visionary to dissolve his organization.
-//!
-//! - `add_tasks` - Function used for a visionary to add tasks to his organization.
-//!
-//! - `remove_tasks` - Function used for a visionary to remove tasks from his organization.
+//!		Inputs:
+//! 		- org_id: Hash
+//! 
+//! Storage Items:
+//! 	Vision: Vision document 
+//! 	VisionCount: Number of total visions in the system
+//! 	Organizations: List of all organizations in the system
+//!     OrganizationCount: Total numbers of organizations in the system
+//! 	Members: List the members of give organizations
+//! 	OrganizationTasks: List of all the tasks that belong to a given organization
+//! 	MemberOf: Lists which organizations a single member belongs to
+//! 	ApplicantsToOrganization: Lists who are the users who want to join an organization
+//! 	
 //!
 //! ## Related Modules
 //!
