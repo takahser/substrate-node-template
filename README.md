@@ -1,8 +1,18 @@
-# Substrate Node Template
+# Universaldot Node : Blockchain for creating digital economies
 
-[![Try on playground](https://img.shields.io/badge/Playground-Node_Template-brightgreen?logo=Parity%20Substrate)](https://docs.substrate.io/playground/) [![Matrix](https://img.shields.io/matrix/substrate-technical:matrix.org)](https://matrix.to/#/#substrate-technical:matrix.org)
+![Logo](https://github.com/UniversalDot/documents/blob/master/logo/rsz_jpg-02.jpg)
 
-A fresh FRAME-based [Substrate](https://www.substrate.io/) node, ready for hacking :rocket:
+In the past, people have created organizations and corporations by obtaining legal status from a government or a state. In the future, organizations and corporations will be created digitally and will have global instead of local reach. UNIVERSALDOT Foundation provides the needed infrastructure for people to organize themselves by creating digital identities and tasks. We enable the creation of a new digital future.
+
+This repository provides Node implementation based [Substrate](https://www.substrate.io/) node. FRAME pallets are imported via git from our own [pallets](https://github.com/UniversalDot/pallets) repository.
+
+## Pallets
+
+- Profile - Enables users to create unique profile as identity
+- Task - Creates the interaction between different users. Some users need some tasks to completed while others wish to complete tasks.
+- Dao - Complex Task require more effort from a community rather than single users. This is accomplished by creating decentralized autonomous organizations.
+- Did - Allows transfer of assets to other Accounts.
+- Grant - Allows grants to be requested by accounts that have 0 balance. Grants are awarded each block to random grant requesters from a Treasury Account. 
 
 ## Getting Started
 
