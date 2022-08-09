@@ -12,11 +12,6 @@ repository = 'https://github.com/substrate-developer-hub/substrate-node-template
 [package.metadata.docs.rs]
 targets = ['x86_64-unknown-linux-gnu']
 
-[dependencies.pallet-template]
-default-features = false
-path = '../pallets/template'
-version = '4.0.0-dev'
-
 [build-dependencies.substrate-wasm-builder]
 git = 'https://github.com/paritytech/substrate.git'
 tag = 'monthly-2021-11'
@@ -191,18 +186,23 @@ version = '4.0.0-dev'
 
 [dependencies.pallet-profile]
 default-features = false
-git = 'https://github.com/UniversalDot/pallets.git'
-version = '0.0.67'
+path = '../pallets/profile'
+version = '0.7.0'
 
 [dependencies.pallet-task]
 default-features = false
-git = 'https://github.com/UniversalDot/pallets.git'
-version = '0.0.40'
+path = '../pallets/task'
+version = '0.7.0'
 
 [dependencies.pallet-dao]
 default-features = false
-git = 'https://github.com/UniversalDot/pallets.git'
-version = '0.0.24'
+path = '../pallets/dao'
+version = '0.7.0'
+
+[dependencies.pallet-did]
+default-features = false
+path = '../pallets/did'
+version = '0.7.0'
 
 [features]
 default = ['std']
@@ -213,10 +213,10 @@ runtime-benchmarks = [
     'frame-system/runtime-benchmarks',
     'hex-literal',
     'pallet-balances/runtime-benchmarks',
-    'pallet-template/runtime-benchmarks',
     'pallet-profile/runtime-benchmarks',
     'pallet-task/runtime-benchmarks',
     'pallet-dao/runtime-benchmarks',
+    'pallet-did/runtime-benchmarks',
     'pallet-timestamp/runtime-benchmarks',
     'sp-runtime/runtime-benchmarks',
 ]
@@ -231,11 +231,11 @@ std = [
     'pallet-task/std',
     'pallet-profile/std',
     'pallet-dao/std',
+    'pallet-did/std',
     'pallet-balances/std',
     'pallet-grandpa/std',
     'pallet-randomness-collective-flip/std',
     'pallet-sudo/std',
-    'pallet-template/std',
     'pallet-timestamp/std',
     'pallet-transaction-payment-rpc-runtime-api/std',
     'pallet-transaction-payment/std',

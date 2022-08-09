@@ -6,6 +6,7 @@
 #[cfg(feature = "std")]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
+use frame_support::PalletId;
 use pallet_grandpa::{
 	fg_primitives, AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList,
 };
@@ -18,6 +19,8 @@ use sp_runtime::{
 	transaction_validity::{TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult, MultiSignature,
 };
+use scale_info::TypeInfo;
+use codec::{Encode, MaxEncodedLen};
 use sp_std::prelude::*;
 #[cfg(feature = "std")]
 use sp_version::NativeVersion;
@@ -39,9 +42,6 @@ use pallet_transaction_payment::CurrencyAdapter;
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
 pub use sp_runtime::{Perbill, Permill};
-
-/// Import the template pallet.
-pub use pallet_template;
 
 /// An index to a block.
 pub type BlockNumber = u32;
@@ -274,14 +274,20 @@ impl pallet_sudo::Config for Runtime {
 	type Call = Call;
 }
 
-/// Configure the pallet-template in pallets/template.
-impl pallet_template::Config for Runtime {
-	type Event = Event;
-}
-
 parameter_types! {
 	// Max tasks per user.
 	pub const MaxTasksOwned: u32 = 77;
+	pub TaskPalletID: PalletId = PalletId(*b"task_pal");
+	#[derive(TypeInfo, MaxEncodedLen, Encode)]
+	pub const MaxTitleLen: u32 = 256;
+	#[derive(TypeInfo, MaxEncodedLen, Encode)]
+	pub const MaxSpecificationLen: u32 = 256;
+	#[derive(TypeInfo, MaxEncodedLen, Encode)]
+	pub const MaxAttachmentsLen: u32 = 5000;
+	#[derive(TypeInfo, MaxEncodedLen, Encode)]
+	pub const MaxFeedbackLen: u32 = 5000;
+	#[derive(TypeInfo, MaxEncodedLen, Encode)]
+	pub const MaxKeywordsLen: u32 = 100;
 }
 
 // Configure the pallet-task.
@@ -289,20 +295,51 @@ impl pallet_task::Config for Runtime {
 	type Event = Event;
 	type Currency = Balances;
 	type MaxTasksOwned = MaxTasksOwned;
+	type Time = Timestamp;
+	type WeightInfo = pallet_task::weights::SubstrateWeight<Runtime>;
+	type PalletId = TaskPalletID;
+	type MaxTitleLen = MaxTitleLen;
+	type MaxSpecificationLen = MaxSpecificationLen;
+	type MaxAttachmentsLen = MaxAttachmentsLen;
+	type MaxFeedbackLen = MaxFeedbackLen;
+	type MaxKeywordsLen = MaxKeywordsLen;
 }
 
 // Configure the pallet-dao.
 impl pallet_dao::Config for Runtime {
 	type Event = Event;
+	type WeightInfo = pallet_dao::weights::SubstrateWeight<Runtime>;
+}
+
+parameter_types! {
+	#[derive(TypeInfo, MaxEncodedLen, Encode)]
+	pub const MaxUsernameLen: u32 = 256;
+	#[derive(TypeInfo, MaxEncodedLen, Encode)]
+	pub const MaxInterestsLen: u32 = 256;
+	#[derive(TypeInfo, MaxEncodedLen, Encode)]
+	pub const MaxAdditionalInformationLen: u32 = 5000;
+	#[derive(TypeInfo, MaxEncodedLen, Encode)]
+	pub const MaxCompletedTasksLen: u32 = 100;
 }
 
 // Configure the pallet-profile.
 impl pallet_profile::Config for Runtime {
 	type Event = Event;
 	type Currency = Balances;
+	type WeightInfo = pallet_profile::weights::SubstrateWeight<Runtime>;
+	type MaxUsernameLen = MaxUsernameLen;
+	type MaxInterestsLen = MaxInterestsLen;
+	type MaxAdditionalInformationLen = MaxAdditionalInformationLen;
+	type MaxCompletedTasksLen = MaxCompletedTasksLen;
 }
 
-
+impl pallet_did::Config for Runtime {
+	type Event = Event;
+	type Public = <Signature as Verify>::Signer;
+	type Signature = Signature;
+	type Time = Timestamp;
+	type WeightInfo = pallet_did::weights::SubstrateWeight<Runtime>;
+}
 
 // Create the runtime by composing the FRAME pallets that were previously configured.
 construct_runtime!(
@@ -319,11 +356,10 @@ construct_runtime!(
 		Balances: pallet_balances,
 		TransactionPayment: pallet_transaction_payment,
 		Sudo: pallet_sudo,
-		// Include the custom logic from the pallet-template in the runtime.
-		TemplateModule: pallet_template,
 		Task: pallet_task::{Pallet, Call, Storage, Event<T>},
 		Profile: pallet_profile::{Pallet, Call, Storage, Event<T>},
 		Dao: pallet_dao::{Pallet, Call, Storage, Event<T>},
+		Did: pallet_did::{Pallet, Call, Storage, Event<T>},
 	}
 );
 
@@ -502,10 +538,10 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, frame_system, SystemBench::<Runtime>);
 			list_benchmark!(list, extra, pallet_balances, Balances);
 			list_benchmark!(list, extra, pallet_timestamp, Timestamp);
-			list_benchmark!(list, extra, pallet_template, TemplateModule);
 			list_benchmark!(list, extra, pallet_profile, Profile);
 			list_benchmark!(list, extra, pallet_task, Task);
 			list_benchmark!(list, extra, pallet_dao, Dao);
+			list_benchmark!(list, extra, pallet_did, Did);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 
@@ -543,10 +579,10 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, frame_system, SystemBench::<Runtime>);
 			add_benchmark!(params, batches, pallet_balances, Balances);
 			add_benchmark!(params, batches, pallet_timestamp, Timestamp);
-			add_benchmark!(params, batches, pallet_template, TemplateModule);
 			add_benchmark!(params, batches, pallet_profile, Profile);
 			add_benchmark!(params, batches, pallet_task, Task);
 			add_benchmark!(params, batches, pallet_dao, Dao);
+			add_benchmark!(params, batches, pallet_did, Did);
 
 
 			Ok(batches)

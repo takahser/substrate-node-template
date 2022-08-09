@@ -6,11 +6,15 @@ In the past, people have created organizations and corporations by obtaining leg
 
 This repository provides Node implementation based [Substrate](https://www.substrate.io/) node. FRAME pallets are imported via git from our own [pallets](https://github.com/UniversalDot/pallets) repository.
 
-## Modules
 
-- [Profile](https://github.com/UniversalDot/pallets/tree/master/profile) - Enables users to create unique profile as identity
-- [Task](https://github.com/UniversalDot/pallets/tree/master/task) - Creates the interaction between different users. Some users need some tasks to completed while others wish to complete tasks.
-- [Dao](https://github.com/UniversalDot/pallets/tree/master/dao) - Complex Task require more effort from a community rather than single users. This is accomplished by creating decentralized autonomous organizations.
+## Pallets
+
+- Profile - Enables users to create unique profile as identity
+- Task - Creates the interaction between different users. Some users need some tasks to completed while others wish to complete tasks.
+- Dao - Complex Task require more effort from a community rather than single users. This is accomplished by creating decentralized autonomous organizations.
+- Did - Allows transfer of assets to other Accounts.
+- Grant - Allows grants to be requested by accounts that have 0 balance. Grants are awarded each block to random grant requesters from a Treasury Account. 
+=======
 
 ## Getting Started
 
@@ -216,4 +220,15 @@ by appending your own. A few useful ones are as follow.
 
 # Check whether the code is compilable
 ./scripts/docker_run.sh cargo check
-``` -->
+```
+
+### Regenerate Weights for pallets
+
+- Each pallet task,profile and dao contains weights for extrinsics in weights.rs file for respective pallet directory.
+- weights.rs contains command to regenerate weights. The command looks like following:
+`./target/release/node-template benchmark --chain dev --execution wasm --wasm-execution compiled --pallet 'pallet_profile' --extrinsic '*' --steps 100 --repeat 50 --output ./pallets/profile/src/weights.rs --template .maintain/frame-weight-template.hbs`
+- Make sure node is built in release mode with runtime-benchmark features enabled.
+    `cargo build --release --features runtime-benchmarks`
+- For more information on benchmakring including recommended hardware check https://docs.substrate.io/v3/runtime/benchmarking/
+
+
