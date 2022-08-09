@@ -6,6 +6,7 @@ In the past, people have created organizations and corporations by obtaining leg
 
 This repository provides Node implementation based [Substrate](https://www.substrate.io/) node. FRAME pallets are imported via git from our own [pallets](https://github.com/UniversalDot/pallets) repository.
 
+
 ## Pallets
 
 - Profile - Enables users to create unique profile as identity
@@ -13,19 +14,17 @@ This repository provides Node implementation based [Substrate](https://www.subst
 - Dao - Complex Task require more effort from a community rather than single users. This is accomplished by creating decentralized autonomous organizations.
 - Did - Allows transfer of assets to other Accounts.
 - Grant - Allows grants to be requested by accounts that have 0 balance. Grants are awarded each block to random grant requesters from a Treasury Account. 
+=======
 
 ## Getting Started
 
-Follow the steps below to get started with the Node Template, or get it up and running right from
-your browser in just a few clicks using
-the [Substrate Playground](https://docs.substrate.io/playground/) :hammer_and_wrench:
 
-### Using Nix
+<!-- ### Using Nix
 
 Install [nix](https://nixos.org/) and optionally [direnv](https://github.com/direnv/direnv) and
 [lorri](https://github.com/target/lorri) for a fully plug and play experience for setting up the
 development environment. To get all the correct dependencies activate direnv `direnv allow` and
-lorri `lorri shell`.
+lorri `lorri shell`. -->
 
 ### Rust Setup
 
@@ -85,17 +84,17 @@ RUST_BACKTRACE=1 ./target/release/node-template -ldebug --dev
 
 ### Connect with Polkadot-JS Apps Front-end
 
-Once the node template is running locally, you can connect it with **Polkadot-JS Apps** front-end
+Once the node is running locally, you can connect it with **Polkadot-JS Apps** front-end
 to interact with your chain. [Click
 here](https://polkadot.js.org/apps/#/explorer?rpc=ws://localhost:9944) connecting the Apps to your
-local node template.
+local node.
 
 ### Multi-Node Local Testnet
 
 If you want to see the multi-node consensus algorithm in action, refer to our
 [Start a Private Network tutorial](https://docs.substrate.io/tutorials/v3/private-network).
 
-## Template Structure
+## Node Structure
 
 A Substrate project such as this consists of a number of components that are spread across a few
 directories.
@@ -170,7 +169,7 @@ the following:
 
 The runtime in this project is constructed using many FRAME pallets that ship with the
 [core Substrate repository](https://github.com/paritytech/substrate/tree/master/frame) and a
-template pallet that is [defined in the `pallets`](./pallets/template/src/lib.rs) directory.
+pallets that is [defined in the `pallets`](https://github.com/UniversalDot/pallets) repository.
 
 A FRAME pallet is compromised of a number of blockchain primitives:
 
@@ -191,6 +190,16 @@ A FRAME pallet is compromised of a number of blockchain primitives:
 First, install [Docker](https://docs.docker.com/get-docker/) and
 [Docker Compose](https://docs.docker.com/compose/install/).
 
+We publish the latest standalone node to the [Docker Hub](https://hub.docker.com/r/universaldot/node), from where it can be pulled and ran locally with relatively low effort and high compatibility.
+
+To pull the image locally, run the following command in your terminal.
+
+```bash
+docker pull universaldot/node
+```
+
+Furthermore, we provide a [Docker-Compose](https://github.com/UniversalDot/compose-service) service that is able to start a blockchain with basic front-end application. 
+<!-- 
 Then run the following command to start a single node development chain.
 
 ```bash
@@ -221,4 +230,5 @@ by appending your own. A few useful ones are as follow.
 - Make sure node is built in release mode with runtime-benchmark features enabled.
     `cargo build --release --features runtime-benchmarks`
 - For more information on benchmakring including recommended hardware check https://docs.substrate.io/v3/runtime/benchmarking/
+
 
